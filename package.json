@@ -1,0 +1,8 @@
+{
+  "devDependencies": {
+    "tailwindcss": "^3.4.1"
+  },
+  "scripts": {
+    "frontend:dev": "tailwindcss -i ./styles/restaurants.css -o ./styles/output.css --watch"
+  }
+}

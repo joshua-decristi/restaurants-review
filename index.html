@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="./styles/output.css" />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"
+    />
+  </head>
+  <body>
+    <nav class="mx-auto flex max-w-6xl items-center justify-between py-4">
+      <div class="leading-loose">
+        <a href="index.html" class="font-bold text-3xl">Restaurant Reviews</a>
+      </div>
+
+      <div class="leading-loose">
+        <!-- Should only be available to authenticated in users -->
+        <a
+          href="add_restaurant.html"
+          class="text-sm font-semibold text-blue-500 px-3"
+          >Add Restaurant</a
+        >
+        <a href="login.html" class="text-sm font-semibold text-blue-500 px-3"
+          >Sign in</a
+        >
+        <a href="register.html" class="text-sm font-semibold text-blue-500 px-3"
+          >Register</a
+        >
+        <a href="#" class="text-sm font-semibold text-blue-500 px-3"
+          >Sign out</a
+        >
+      </div>
+    </nav>
+
+    <div class="mx-auto max-w-6xl w-full">
+      <div class="flex justify-center items-center my-10">
+        <div class="mr-6">
+          <label class="text-sm text-gray-500">Cuisine</label>
+          <select class="border-gray-300 border rounded-md p-1">
+            <option value="">Any</option>
+            <option value="italian">Italian</option>
+            <option value="french">French</option>
+            <option value="chines">Chinese</option>
+            <option value="japanese">Japanese</option>
+            <option value="indian">Indian</option>
+            <option value="mexican">Mexican</option>
+            <option value="greek">Greek</option>
+          </select>
+        </div>
+
+        <div class="mr-6">
+          <label class="text-sm text-gray-500">Minimum rating</label>
+          <select class="border-gray-300 border rounded-md p-1">
+            <option value="">Any</option>
+            <option value="5">5</option>
+            <option value="4">4</option>
+            <option value="3">3</option>
+            <option value="2">2</option>
+            <option value="1">1</option>
+          </select>
+        </div>
+
+        <div class="mr-6">
+          <label class="text-sm text-gray-500">Maximum rating</label>
+          <select class="border-gray-300 border rounded-md p-1">
+            <option value="">Any</option>
+            <option value="5">5</option>
+            <option value="4">4</option>
+            <option value="3">3</option>
+            <option value="2">2</option>
+            <option value="1">1</option>
+          </select>
+        </div>
+
+        <div class="mr-6">
+          <label class="text-sm text-gray-500">City</label>
+          <select class="border-gray-300 border rounded-md p-1">
+            <option value="">Any</option>
+            <option value="New_York">New York</option>
+            <option value="Chicago">Chicago</option>
+            <option value="San Francisco">San Francisco</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="mx-auto max-w-6xl w-full grid grid-cols-3 gap-8">
+      <div
+        class="bg-base-100 shadow-xl rounded-lg overflow-hidden hover:shadow-2xl hover:-translate-y-1 transition-all duration-500"
+      >
+        <img src="assets/restaurant1.jpg" alt="Restaurant 1" />
+        <div class="p-2">
+          <h2
+            class="px-2 mb-1 mt-1 leading-none text-lg font-semibold text-gray-600"
+          >
+            Thyme Traveler
+          </h2>
+          <p class="px-2 leading-none text-sm text-gray-500">
+            Embark on a culinary adventure through time
+          </p>
+          <div class="flex justify-between px-2 mt-5">
+            <div>
+              <span
+                class="material-symbols-outlined text-yellow-500"
+                style="font-variation-settings: 'FILL' 1"
+              >
+                star_rate
+              </span>
+              <span
+                class="material-symbols-outlined text-yellow-500"
+                style="font-variation-settings: 'FILL' 1"
+              >
+                star_rate
+              </span>
+              <span
+                class="material-symbols-outlined text-yellow-500"
+                style="font-variation-settings: 'FILL' 1"
+              >
+                star_rate
+              </span>
+              <span
+                class="material-symbols-outlined text-yellow-500"
+                style="font-variation-settings: 'FILL' 1"
+              >
+                star_rate_half
+              </span>
+              <span class="material-symbols-outlined text-yellow-500">
+                star_rate
+              </span>
+            </div>
+
+            <a
+              href="restaurant.html"
+              class="py-2 px-4 bg-blue-500 rounded-md text-xs text-white uppercase"
+            >
+              Details
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <div
+        class="bg-base-100 shadow-xl rounded-lg overflow-hidden hover:shadow-2xl hover:-translate-y-1 transition-all duration-500"
+      >
+        <img src="assets/restaurant1.jpg" alt="Restaurant 1" />
+        <div class="p-2">
+          <h2
+            class="px-2 mb-1 mt-1 leading-none text-lg font-semibold text-gray-600"
+          >
+            Thyme Traveler
+          </h2>
+          <p class="px-2 leading-none text-sm text-gray-500">
+            Embark on a culinary adventure through time
+          </p>
+          <div class="flex justify-between px-2 mt-5">
+            <div>
+              <span
+                class="material-symbols-outlined text-yellow-500"
+                style="font-variation-settings: 'FILL' 1"
+              >
+                star_rate
+              </span>
+              <span
+                class="material-symbols-outlined text-yellow-500"
+                style="font-variation-settings: 'FILL' 1"
+              >
+                star_rate
+              </span>
+              <span
+                class="material-symbols-outlined text-yellow-500"
+                style="font-variation-settings: 'FILL' 1"
+              >
+                star_rate
+              </span>
+              <span
+                class="material-symbols-outlined text-yellow-500"
+                style="font-variation-settings: 'FILL' 1"
+              >
+                star_rate_half
+              </span>
+              <span class="material-symbols-outlined text-yellow-500">
+                star_rate
+              </span>
+            </div>
+
+            <a
+              href="restaurant.html"
+              class="py-2 px-4 bg-blue-500 rounded-md text-xs text-white uppercase"
+            >
+              Details
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <div
+        class="bg-base-100 shadow-xl rounded-lg overflow-hidden hover:shadow-2xl hover:-translate-y-1 transition-all duration-500"
+      >
+        <img src="assets/restaurant1.jpg" alt="Restaurant 1" />
+        <div class="p-2">
+          <h2
+            class="px-2 mb-1 mt-1 leading-none text-lg font-semibold text-gray-600"
+          >
+            Thyme Traveler
+          </h2>
+          <p class="px-2 leading-none text-sm text-gray-500">
+            Embark on a culinary adventure through time
+          </p>
+          <div class="flex justify-between px-2 mt-5">
+            <div>
+              <span
+                class="material-symbols-outlined text-yellow-500"
+                style="font-variation-settings: 'FILL' 1"
+              >
+                star_rate
+              </span>
+              <span
+                class="material-symbols-outlined text-yellow-500"
+                style="font-variation-settings: 'FILL' 1"
+              >
+                star_rate
+              </span>
+              <span
+                class="material-symbols-outlined text-yellow-500"
+                style="font-variation-settings: 'FILL' 1"
+              >
+                star_rate
+              </span>
+              <span
+                class="material-symbols-outlined text-yellow-500"
+                style="font-variation-settings: 'FILL' 1"
+              >
+                star_rate_half
+              </span>
+              <span class="material-symbols-outlined text-yellow-500">
+                star_rate
+              </span>
+            </div>
+
+            <a
+              href="restaurant.html"
+              class="py-2 px-4 bg-blue-500 rounded-md text-xs text-white uppercase"
+            >
+              Details
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <div
+        class="bg-base-100 shadow-xl rounded-lg overflow-hidden hover:shadow-2xl hover:-translate-y-1 transition-all duration-500"
+      >
+        <img src="assets/restaurant1.jpg" alt="Restaurant 1" />
+        <div class="p-2">
+          <h2
+            class="px-2 mb-1 mt-1 leading-none text-lg font-semibold text-gray-600"
+          >
+            Thyme Traveler
+          </h2>
+          <p class="px-2 leading-none text-sm text-gray-500">
+            Embark on a culinary adventure through time
+          </p>
+          <div class="flex justify-between px-2 mt-5">
+            <div>
+              <span
+                class="material-symbols-outlined text-yellow-500"
+                style="font-variation-settings: 'FILL' 1"
+              >
+                star_rate
+              </span>
+              <span
+                class="material-symbols-outlined text-yellow-500"
+                style="font-variation-settings: 'FILL' 1"
+              >
+                star_rate
+              </span>
+              <span
+                class="material-symbols-outlined text-yellow-500"
+                style="font-variation-settings: 'FILL' 1"
+              >
+                star_rate
+              </span>
+              <span
+                class="material-symbols-outlined text-yellow-500"
+                style="font-variation-settings: 'FILL' 1"
+              >
+                star_rate_half
+              </span>
+              <span class="material-symbols-outlined text-yellow-500">
+                star_rate
+              </span>
+            </div>
+
+            <a
+              href="restaurant.html"
+              class="py-2 px-4 bg-blue-500 rounded-md text-xs text-white uppercase"
+            >
+              Details
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <div
+        class="bg-base-100 shadow-xl rounded-lg overflow-hidden hover:shadow-2xl hover:-translate-y-1 transition-all duration-500"
+      >
+        <img src="assets/restaurant1.jpg" alt="Restaurant 1" />
+        <div class="p-2">
+          <h2
+            class="px-2 mb-1 mt-1 leading-none text-lg font-semibold text-gray-600"
+          >
+            Thyme Traveler
+          </h2>
+          <p class="px-2 leading-none text-sm text-gray-500">
+            Embark on a culinary adventure through time
+          </p>
+          <div class="flex justify-between px-2 mt-5">
+            <div>
+              <span
+                class="material-symbols-outlined text-yellow-500"
+                style="font-variation-settings: 'FILL' 1"
+              >
+                star_rate
+              </span>
+              <span
+                class="material-symbols-outlined text-yellow-500"
+                style="font-variation-settings: 'FILL' 1"
+              >
+                star_rate
+              </span>
+              <span
+                class="material-symbols-outlined text-yellow-500"
+                style="font-variation-settings: 'FILL' 1"
+              >
+                star_rate
+              </span>
+              <span
+                class="material-symbols-outlined text-yellow-500"
+                style="font-variation-settings: 'FILL' 1"
+              >
+                star_rate_half
+              </span>
+              <span class="material-symbols-outlined text-yellow-500">
+                star_rate
+              </span>
+            </div>
+
+            <a
+              href="restaurant.html"
+              class="py-2 px-4 bg-blue-500 rounded-md text-xs text-white uppercase"
+            >
+              Details
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <footer class="bg-gray-800 h-40 mt-10 flex py-5">
+      <div class="mx-auto max-w-6xl w-full">
+        <div class="text-white text-sm mb-4">Acme Restaurant Reviews</div>
+        <div class="text-white text-sm my-4">Toptal Test Project</div>
+      </div>
+    </footer>
+  </body>
+</html>
