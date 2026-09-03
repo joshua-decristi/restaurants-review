@@ -20,8 +20,10 @@ let postgresClient: postgres.Sql | undefined;
 
 function createDatabase(): Database {
   switch (serverEnv.DATABASE_DRIVER) {
-    case "postgres":
-      return drizzlePostgresJs(postgres(serverEnv.DATABASE_URL));
+    case "postgres": {
+      postgresClient = postgres(serverEnv.DATABASE_URL);
+      return drizzlePostgresJs(postgresClient);
+    }
 
     case "neon":
       return drizzleNeon(neon(serverEnv.DATABASE_URL));
