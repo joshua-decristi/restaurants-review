@@ -136,3 +136,49 @@ This contains only the basic, high-level product routes, NOT every endpoint.
 6. The "Delete Restaurant" workflow:
    - Opens a confirmation modal
    - Only the restaurant's owner can delete it
+
+---
+
+## Local Development Setup
+
+Prerequisites: Node 26 (`.nvmrc`), pnpm (pinned via `packageManager`), and any
+Docker-compatible runtime (Docker Desktop, Docker Engine, or OrbStack).
+
+```bash
+cp .env.example .env   # then generate AUTH_SECRET: openssl rand -base64 32
+pnpm install
+pnpm db:up             # start PostgreSQL (health-checked, named volume)
+pnpm db:push           # create the schema with drizzle-kit push (no migrations)
+pnpm db:seed           # upsert the seeded development user (see below)
+```
+
+The app must have `AUTH_SECRET` set (at least 32 characters) before it starts;
+it is validated fail-fast by `/lib/env/server` and never committed with a real
+value.
+
+`db:seed` is idempotent: it upserts exactly one development user
+(`DEVELOPMENT_USER_EMAIL` / `DEVELOPMENT_USER_PASSWORD` from `.env`, non-secret
+example values) and resets that user's password to the documented value on
+every run. Sign in at `/login` with those credentials, then visit `/protected`
+(redirects to the login page when signed out) and sign out from there.
+
+The seed script runs as `tsx --conditions=react-server domains/users/seed.ts`
+on purpose: it imports the server-only modules under `/lib/env` and `/lib/db`,
+and the `server-only` package only resolves outside Next.js when Node loads it
+with the `react-server` export condition. Removing that flag makes the seed
+crash at import time.
+
+Everyday commands:
+
+- `pnpm dev` / `pnpm build` / `pnpm start` — Next.js dev, production build, serve
+- `pnpm lint` / `pnpm lint:fix` — ESLint (zero warnings enforced) with Prettier
+- `pnpm type-check` — TypeScript project check
+- `pnpm test` / `pnpm test:watch` — Jest with React Testing Library
+- `pnpm db:seed` — upsert the seeded development user (idempotent)
+- `pnpm db:studio` — Drizzle Studio (optional)
+- `pnpm db:down` — stop the PostgreSQL container (data persists in the `takehome-db-data` volume)
+
+`pnpm db:reset` is **destructive**: it stops the container and deletes the named
+volume, permanently removing all local data. Re-run `db:up` and `db:push`
+afterwards.
+
