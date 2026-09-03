@@ -1,0 +1,31 @@
+# Local development PostgreSQL. Works with any Docker-compatible runtime
+# (Docker Desktop, Docker Engine, OrbStack) through the standard
+# `docker compose` interface. Credentials are configurable via a `.env` file,
+# which `docker compose` loads automatically for variable interpolation.
+services:
+  db:
+    image: postgres:18
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-takehome}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-takehome}
+      POSTGRES_DB: ${POSTGRES_DB:-takehome}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      # postgres 18+ stores data in a version-specific subdirectory, so the
+      # named volume mounts at /var/lib/postgresql (not .../data).
+      - db-data:/var/lib/postgresql
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-takehome} -d ${POSTGRES_DB:-takehome}",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  db-data:
+    name: takehome-db-data
