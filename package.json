@@ -24,6 +24,9 @@
   },
   "packageManager": "pnpm@11.24.0",
   "dependencies": {
+    "@logtape/drizzle-orm": "^2.3.2",
+    "@logtape/file": "^2.3.2",
+    "@logtape/logtape": "^2.3.2",
     "@neondatabase/serverless": "^1.1.0",
     "bcryptjs": "^3.0.3",
     "class-variance-authority": "^0.7.1",
