@@ -13,15 +13,12 @@ export default function Home() {
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground">
-            Local PostgreSQL, credentials authentication, and tests are wired up. Sign in as the seeded development user to see the protected page.
+            Local PostgreSQL, credentials authentication, and tests are wired up. Sign in as the seeded reviewer or owner account to see its role page.
           </p>
         </CardContent>
-        <CardFooter className="justify-end gap-2">
-          <Button variant="outline" asChild>
-            <Link href="/login">Sign in</Link>
-          </Button>
+        <CardFooter className="justify-end">
           <Button asChild>
-            <Link href="/protected">Protected page</Link>
+            <Link href="/login">Sign in</Link>
           </Button>
         </CardFooter>
       </Card>
