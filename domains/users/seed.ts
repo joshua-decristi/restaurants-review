@@ -5,24 +5,54 @@ import { getSeedEnv } from "@/lib/env/server";
 
 import { normalizeEmail } from "./credentials";
 import { hashPassword } from "./password";
+import type { Role } from "./roles";
 import { users } from "./schema";
 
+/** One seeded login per immutable role; the email is stored normalized. */
+export interface SeedAccount {
+  role: Role;
+  email: string;
+  password: string;
+}
+
+/** Validated seed-environment values (the parsed result of `getSeedEnv()`). */
+export interface SeedEnv {
+  REVIEWER_USER_EMAIL: string;
+  REVIEWER_USER_PASSWORD: string;
+  OWNER_USER_EMAIL: string;
+  OWNER_USER_PASSWORD: string;
+}
+
 /**
- * Seeds exactly one development user with an idempotent upsert (a direct
- * insert is the sanctioned customization over drizzle-seed here, because the
- * password hash must be derived from the environment's development password).
- * Re-running the seed resets the development user's password to the
- * documented value: hashes are salted, so the stored hash changes every run
- * while the password stays usable.
+ * Seeds exactly one account per role via idempotent upsert (direct insert is
+ * the sanctioned customization over drizzle-seed: the hash derives from env
+ * config). Re-running restores each account's configured role and password.
  */
 async function main(): Promise<void> {
   const seedEnv = getSeedEnv();
-  const email = normalizeEmail(seedEnv.DEVELOPMENT_USER_EMAIL);
-  const passwordHash = await hashPassword(seedEnv.DEVELOPMENT_USER_PASSWORD);
+  const accounts = [
+    {
+      role: "reviewer",
+      email: normalizeEmail(seedEnv.REVIEWER_USER_EMAIL),
+      password: seedEnv.REVIEWER_USER_PASSWORD,
+    },
+    {
+      role: "owner",
+      email: normalizeEmail(seedEnv.OWNER_USER_EMAIL),
+      password: seedEnv.OWNER_USER_PASSWORD,
+    },
+  ] as const;
 
-  await db.insert(users).values({ email, passwordHash }).onConflictDoUpdate({ target: users.email, set: { passwordHash } });
+  if (accounts[0].email === accounts[1].email)
+    throw new Error("REVIEWER_USER_EMAIL and OWNER_USER_EMAIL must be different addresses: a single login cannot hold both roles.");
 
-  console.log(`Seeded development user: ${email}`);
+  for (const { role, email, password } of accounts) {
+    const passwordHash = await hashPassword(password);
+
+    await db.insert(users).values({ email, passwordHash, role }).onConflictDoUpdate({ target: users.email, set: { passwordHash, role } });
+
+    console.log(`Seeded ${role} account.`);
+  }
 }
 
 main()

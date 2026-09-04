@@ -150,18 +150,24 @@ cp .env.example .env   # then generate AUTH_SECRET: openssl rand -base64 32
 pnpm install
 pnpm db:up             # start PostgreSQL (health-checked, named volume)
 pnpm db:push           # create the schema with drizzle-kit push (no migrations)
-pnpm db:seed           # upsert the seeded development user (see below)
+pnpm db:seed           # upsert the two seeded development accounts (see below)
 ```
 
 The app must have `AUTH_SECRET` set (at least 32 characters) before it starts;
 it is validated fail-fast by `/lib/env/server` and never committed with a real
 value.
 
-`db:seed` is idempotent: it upserts exactly one development user
-(`DEVELOPMENT_USER_EMAIL` / `DEVELOPMENT_USER_PASSWORD` from `.env`, non-secret
-example values) and resets that user's password to the documented value on
-every run. Sign in at `/login` with those credentials, then visit `/protected`
-(redirects to the login page when signed out) and sign out from there.
+`role` is a required column with no default: on an existing populated
+database, `pnpm db:push` will fail or prompt interactively because there is
+no value for existing rows. This local database is disposable, so reset it
+instead: `pnpm db:reset`, then `pnpm db:up`, `pnpm db:push`, `pnpm db:seed`.
+
+`db:seed` is idempotent: it upserts exactly one account per role
+(`REVIEWER_USER_EMAIL` / `REVIEWER_USER_PASSWORD` and `OWNER_USER_EMAIL` /
+`OWNER_USER_PASSWORD` from `.env`, non-secret example values; the two emails
+must be different addresses, checked after normalization) and restores
+each account's configured role and password on every run. Sign in at
+`/login` with either account's credentials.
 
 The seed script runs as `tsx --conditions=react-server domains/users/seed.ts`
 on purpose: it imports the server-only modules under `/lib/env` and `/lib/db`,
@@ -175,7 +181,7 @@ Everyday commands:
 - `pnpm lint` / `pnpm lint:fix` — ESLint (zero warnings enforced) with Prettier
 - `pnpm type-check` — TypeScript project check
 - `pnpm test` / `pnpm test:watch` — Jest with React Testing Library
-- `pnpm db:seed` — upsert the seeded development user (idempotent)
+- `pnpm db:seed` — upsert the two seeded development accounts (idempotent)
 - `pnpm db:studio` — Drizzle Studio (optional)
 - `pnpm db:down` — stop the PostgreSQL container (data persists in the `takehome-db-data` volume)
 

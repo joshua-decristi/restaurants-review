@@ -20,9 +20,12 @@ const serverEnvSchema = z.object({
 });
 
 const seedEnvSchema = z.object({
-  /** Seeded development user login (non-secret example values). */
-  DEVELOPMENT_USER_EMAIL: z.email(),
-  DEVELOPMENT_USER_PASSWORD: z.string().min(8),
+  /** Seeded reviewer-account login (non-secret example values). */
+  REVIEWER_USER_EMAIL: z.email(),
+  REVIEWER_USER_PASSWORD: z.string().min(8),
+  /** Seeded owner-account login (non-secret example values). */
+  OWNER_USER_EMAIL: z.email(),
+  OWNER_USER_PASSWORD: z.string().min(8),
 });
 
 /**
