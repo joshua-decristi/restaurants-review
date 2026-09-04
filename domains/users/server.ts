@@ -3,6 +3,7 @@ import "server-only";
 import { redirect } from "next/navigation";
 
 import { serverEnv } from "@/lib/env/server";
+import { getServerLogger } from "@/lib/logging/server";
 
 import { createAuth, InvalidCredentialsError } from "./auth/server";
 import { credentialsSchema } from "./credentials";
@@ -51,7 +52,10 @@ export async function login(input: LoginInput): Promise<LoginResult> {
   try {
     await signInCredentials(input);
   } catch (error) {
-    if (error instanceof InvalidCredentialsError) return { ok: false, error: "invalid-credentials" };
+    if (error instanceof InvalidCredentialsError) {
+      getServerLogger().warn("Login rejected: invalid credentials");
+      return { ok: false, error: "invalid-credentials" };
+    }
 
     throw error;
   }
@@ -60,6 +64,7 @@ export async function login(input: LoginInput): Promise<LoginResult> {
 
 /** Signs the user out; completes via a framework redirect. */
 export async function logout(redirectTo = "/"): Promise<void> {
+  getServerLogger().info("User logged out");
   await signOutSession(redirectTo);
 }
 

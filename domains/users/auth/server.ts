@@ -3,6 +3,8 @@ import "server-only";
 import NextAuth, { CredentialsSignin } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 
+import { getServerLogger } from "@/lib/logging/server";
+
 /**
  * Private, server-only Auth.js wrapper: an anti-corruption layer. Auth.js
  * types and APIs never leave this module; the users domain supplies all
@@ -52,7 +54,11 @@ export function createAuth(config: AuthConfig) {
           email: { label: "Email" },
           password: { label: "Password", type: "password" },
         },
-        authorize: (credentials) => config.verifyCredentials(credentials),
+        authorize: async (credentials) => {
+          const user = await config.verifyCredentials(credentials);
+          if (user) getServerLogger().info("User authenticated", { userId: user.id });
+          return user;
+        },
       }),
     ],
     callbacks: {
