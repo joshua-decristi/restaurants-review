@@ -1,4 +1,4 @@
-import { credentialsSchema, normalizeEmail } from "./credentials";
+import { credentialsSchema, normalizeEmail } from "../server";
 
 describe("credentialsSchema", () => {
   it("accepts valid credentials", () => {

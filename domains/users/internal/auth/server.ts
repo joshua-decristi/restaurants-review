@@ -7,8 +7,8 @@ import Credentials from "next-auth/providers/credentials";
 import { serverEnv } from "@/lib/env/server";
 import { getServerLogger } from "@/lib/logging/server";
 
-import { credentialsSchema } from "../credentials";
-import { verifyPassword } from "../password";
+import { credentialsSchema } from "../credentials/server";
+import { verifyPassword } from "../password/server";
 import { isRole, type Role } from "../roles";
 
 import { getUserByEmail } from "./queries";

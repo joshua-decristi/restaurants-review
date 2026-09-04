@@ -3,10 +3,10 @@ import "dotenv/config";
 import { closeDatabase, db } from "@/lib/db/server";
 import { getSeedEnv } from "@/lib/env/server";
 
-import { normalizeEmail } from "./credentials";
-import { hashPassword } from "./password";
-import type { Role } from "./roles";
-import { users } from "./schema";
+import { normalizeEmail } from "./internal/credentials/server";
+import { hashPassword } from "./internal/password/server";
+import type { Role } from "./internal/roles";
+import { users } from "./internal/schema";
 
 /** One seeded login per immutable role; the email is stored normalized. */
 export interface SeedAccount {

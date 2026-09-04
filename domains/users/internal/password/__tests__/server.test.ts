@@ -1,4 +1,4 @@
-import { hashPassword, verifyPassword } from "./password";
+import { hashPassword, verifyPassword } from "../server";
 
 describe("password verification", () => {
   const password = "dev-password-123";
