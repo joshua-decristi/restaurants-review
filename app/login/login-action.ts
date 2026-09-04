@@ -14,13 +14,13 @@ function formString(formData: FormData, key: string): string {
 
 /**
  * Route-specific form adapter: extracts the form contract and maps the
- * domain's opaque login failure to a single user-facing message, so the form
- * never learns whether the email exists.
+ * domain's opaque login failure to one user-facing message, so the form never
+ * learns whether the email exists. Success redirects to the role's home page.
  */
 export async function loginAction(_state: LoginActionState, formData: FormData): Promise<LoginActionState> {
   const email = formString(formData, "email");
   const password = formString(formData, "password");
-  const result = await login({ email, password, redirectTo: "/protected" });
+  const result = await login({ email, password });
 
   if (!result.ok) return { error: "Invalid email or password." };
   return { error: null };

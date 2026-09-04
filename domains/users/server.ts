@@ -2,64 +2,71 @@ import "server-only";
 
 import { redirect } from "next/navigation";
 
-import { serverEnv } from "@/lib/env/server";
 import { getServerLogger } from "@/lib/logging/server";
 
 import { createAuth, InvalidCredentialsError } from "./auth/server";
-import { credentialsSchema } from "./credentials";
-import { verifyPassword } from "./password";
-import { getUserByEmail } from "./queries";
+import type { Role } from "./roles";
 
 /**
- * Public server interface of the users domain: authentication operations and
- * the current-session mapping, with all Auth.js specifics hidden behind the
- * private auth sub-module.
+ * Public server interface of the users domain: authentication operations,
+ * the session boundary, and the role policy consumed by transport layers,
+ * with all Auth.js specifics hidden behind the private auth sub-module.
  */
 
-export interface CurrentUser {
-  id: number;
-  email: string;
+/** Domain-facing session: the identity trusted from the signed JWT. */
+export interface Session {
+  user: { id: string; email: string; role: Role };
 }
 
 export interface LoginInput {
   email: string;
   password: string;
-  redirectTo: string;
 }
 
+/**
+ * Result of a login attempt. A successful sign-in never produces `{ ok: true }`
+ * at runtime — login exits through a role redirect — but the variant stays in
+ * the contract so callers can branch on the result.
+ */
 export type LoginResult = { ok: true } | { ok: false; error: "invalid-credentials" };
 
-const { authRouteHandlers, signInCredentials, signOutSession, getSession } = createAuth({
-  secret: serverEnv.AUTH_SECRET,
-  verifyCredentials: async (raw) => {
-    const credentials = credentialsSchema.safeParse(raw);
-    if (!credentials.success) return null;
+/** The role-gated route prefix for each immutable role; this domain owns route-to-role policy. */
+const ROLE_ROUTES = { reviewer: "/reviewer", owner: "/owner" } as const satisfies Record<Role, string>;
 
-    const user = await getUserByEmail(credentials.data.email);
-    if (!user) return null;
+const { authRouteHandlers, signInCredentials, signOutSession, getSession: getSessionFromAuth } = createAuth();
 
-    const isValid = await verifyPassword(credentials.data.password, user.passwordHash);
-    return isValid ? { id: String(user.id), email: user.email } : null;
-  },
-});
+/** Logs and returns the single opaque login failure. */
+function rejectLogin(): LoginResult {
+  getServerLogger().warn("Login rejected: invalid credentials");
+  return { ok: false, error: "invalid-credentials" };
+}
 
 /**
- * Credentials sign-in. A successful sign-in completes via a framework
- * redirect that must propagate to the caller; failures return a single
- * opaque error so email existence is never leaked.
+ * Credentials sign-in:
+ * - sets the signed session cookie (role baked into the JWT)
+ * - redirects to the verified role's page
+ * - failures return one opaque error so email existence is never leaked.
  */
 export async function login(input: LoginInput): Promise<LoginResult> {
   try {
-    await signInCredentials(input);
+    const user = await signInCredentials(input);
+    redirect(ROLE_ROUTES[user.role]);
   } catch (error) {
-    if (error instanceof InvalidCredentialsError) {
-      getServerLogger().warn("Login rejected: invalid credentials");
-      return { ok: false, error: "invalid-credentials" };
-    }
-
+    if (error instanceof InvalidCredentialsError) return rejectLogin();
     throw error;
   }
-  return { ok: true };
+}
+
+/**
+ * Public session boundary:
+ * - validates the signed JWT (signature, expiry, cookie presence)
+ * - maps it to the domain session — no database lookup
+ * - the immutable role stays trusted.
+ * - Returns null for absent, malformed, expired, or invalidly signed tokens
+ * - never redirects/throws when no session exists
+ */
+export async function getSession(request?: Request): Promise<Session | null> {
+  return getSessionFromAuth(request);
 }
 
 /** Signs the user out; completes via a framework redirect. */
@@ -68,20 +75,5 @@ export async function logout(redirectTo = "/"): Promise<void> {
   await signOutSession(redirectTo);
 }
 
-/** Maps the current session to a domain user, or null when signed out. */
-export async function getCurrentUser(): Promise<CurrentUser | null> {
-  const session = await getSession();
-  if (!session) return null;
-
-  const id = Number(session.user.id);
-  return Number.isInteger(id) ? { id, email: session.user.email } : null;
-}
-
-/** Requires a signed-in user, redirecting to the login page otherwise. */
-export async function requireUser(loginRedirect = "/login"): Promise<CurrentUser> {
-  const user = await getCurrentUser();
-  if (!user) redirect(loginRedirect);
-  return user;
-}
-
 export { authRouteHandlers };
+export type { Role } from "./roles";

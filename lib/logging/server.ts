@@ -6,11 +6,9 @@ import { configureSync, getConfig, getConsoleSink, getLogger } from "@logtape/lo
 import { serverEnv } from "@/lib/env/server";
 
 /**
- * I've decided NOT to log in production, because it's a demo application.
- *
- * However, in a real project, I WOULD setup logging in remote envs (dev, staging, prod, etc) to be:
- * - asynchronous (for large streaming events)
- * - to a dedicated log source (CloudWatch, or even just a DB)
+ * Logging is disabled in production (demo app). In a real project, remote-env
+ * logging would be: async (large streaming events) and to a dedicated log
+ * source (CloudWatch, or even just a DB).
  */
 export function initializeServerLogger() {
   // Only initialize once
