@@ -13,7 +13,7 @@ import { getSession } from "@/lib/auth/server";
 import { closeDatabase, db, resetDatabase } from "@/lib/db/server";
 import { serverEnv } from "@/lib/env/server";
 
-import { users, usersFactory } from "../server";
+import { userNameSchema, users, usersFactory } from "../server";
 
 /** Auth.js session-cookie name (non-secure variant, as served over http). */
 const SESSION_COOKIE = "authjs.session-token";
@@ -97,11 +97,17 @@ it("returns null for missing or unsupported role claims", async () => {
   expect(await getSession(sessionRequest(unsupportedRole))).toBeNull();
 });
 
-it("persists a factory user with normalized email, role, and hashed password", async () => {
+it("persists a factory user with normalized email, role, display name, and hashed password", async () => {
   const plaintextPassword = "known-integration-password";
   const mixedEmail = "  Owner.User@Example.COM ";
+  const paddedName = "  Ada Lovelace  ";
 
-  const created = await usersFactory(db).fakeUser({ email: mixedEmail, role: "owner", password: plaintextPassword });
+  const created = await usersFactory(db).fakeUser({
+    email: mixedEmail,
+    role: "owner",
+    password: plaintextPassword,
+    name: paddedName,
+  });
 
   const rows = await db.select().from(users).where(eq(users.id, created.id));
   expect(rows).toHaveLength(1);
@@ -109,8 +115,34 @@ it("persists a factory user with normalized email, role, and hashed password", a
 
   expect(persisted.email).toBe("owner.user@example.com");
   expect(persisted.role).toBe("owner");
+  expect(persisted.name).toBe("Ada Lovelace");
+  expect(persisted.name.length).toBeGreaterThanOrEqual(1);
+  expect(persisted.name.length).toBeLessThanOrEqual(100);
   expect(persisted.passwordHash).not.toBe(plaintextPassword);
   expect(JSON.stringify(persisted)).not.toContain(plaintextPassword);
   expect(created).not.toHaveProperty("password");
   await expect(verifyPassword(plaintextPassword, persisted.passwordHash)).resolves.toBe(true);
+});
+
+it("factory default name is trimmed and within 1–100 characters", async () => {
+  const created = await usersFactory(db).fakeUser();
+
+  expect(created.name).toBe(created.name.trim());
+  expect(created.name.length).toBeGreaterThanOrEqual(1);
+  expect(created.name.length).toBeLessThanOrEqual(100);
+  expect(userNameSchema.safeParse(created.name).success).toBe(true);
+});
+
+it.each([
+  { name: "", label: "empty" },
+  { name: "   ", label: "whitespace-only" },
+  { name: "x".repeat(101), label: "over-100" },
+] as const)("rejects $label display names", ({ name }) => {
+  expect(userNameSchema.safeParse(name).success).toBe(false);
+});
+
+it("accepts boundary display names of length 1 and 100", () => {
+  expect(userNameSchema.parse("A")).toBe("A");
+  expect(userNameSchema.parse("x".repeat(100))).toHaveLength(100);
+  expect(userNameSchema.parse("  Trimmed  ")).toBe("Trimmed");
 });

@@ -8,6 +8,7 @@ import { createFaker } from "@/lib/db/server";
 import type { Role } from "./roles";
 import type { User } from "./schema";
 import { users } from "./schema";
+import { userNameSchema } from "./validation";
 
 /**
  * Insert overrides plus the factory-only plaintext `password`.
@@ -19,7 +20,7 @@ export type FakeUserOverrides = Omit<Partial<typeof users.$inferInsert>, "passwo
 
 /** Builds persisted user values; explicit overrides beat Faker defaults. */
 async function buildUserValues(faker: Faker, overrides: FakeUserOverrides = {}): Promise<typeof users.$inferInsert> {
-  const { password: explicitPassword, email: explicitEmail, role: explicitRole, ...rest } = overrides;
+  const { password: explicitPassword, email: explicitEmail, role: explicitRole, name: explicitName, ...rest } = overrides;
 
   // UUID local-part keeps concurrent test inserts collision-resistant.
   // Auth credentialsSchema normalizes email and enforces password minimum.
@@ -29,8 +30,10 @@ async function buildUserValues(faker: Faker, overrides: FakeUserOverrides = {}):
   });
   const passwordHash = await hashPassword(password);
   const role: Role = explicitRole ?? "reviewer";
+  // Display name is required and stored trimmed (1–100). Registration is separate.
+  const name = userNameSchema.parse(explicitName ?? faker.person.fullName());
 
-  return { ...rest, email, passwordHash, role };
+  return { ...rest, email, passwordHash, role, name };
 }
 
 /**

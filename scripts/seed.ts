@@ -16,15 +16,17 @@ const SEED_IMAGE_FILES = ["brasserie-paris.webp", "cafe-mystique.webp", "chinese
 const SEED_IMGS_DIR = join(process.cwd(), "seed/assets");
 
 async function seedTestUsers() {
-  // Baseline accounts use explicit env credentials.
+  // Baseline accounts use explicit env credentials and public display names.
   const reviewerSeed = {
     role: "reviewer",
+    name: "Alex Reviewer",
     email: normalizeEmail(seedEnv.REVIEWER_USER_EMAIL),
     password: seedEnv.REVIEWER_USER_PASSWORD,
   } as const;
 
   const ownerSeed = {
     role: "owner",
+    name: "Olivia Owner",
     email: normalizeEmail(seedEnv.OWNER_USER_EMAIL),
     password: seedEnv.OWNER_USER_PASSWORD,
   } as const;
