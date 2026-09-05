@@ -10,13 +10,25 @@ const serverEnvSchema = z.object({
    * - "test" = jest test runner
    * - "nullish" = manual seeding
    */
-  NODE_ENV: z.enum(["production", "development", "test"]).nullish(),
+  NODE_ENV: z.enum(["production", "development", "test"]).optional(),
   /** Runtime database driver: local container (postgres.js) or Neon serverless. */
   DATABASE_DRIVER: z.enum(["postgres", "neon"]),
   /** PostgreSQL connection string for the selected runtime driver. */
   DATABASE_URL: z.url(),
   /** Auth.js session secret; generate with `openssl rand -base64 32`. */
   AUTH_SECRET: z.string().min(32, "AUTH_SECRET must be at least 32 characters. Generate one with: openssl rand -base64 32"),
+  /**
+   * Asset storage backend. Defaults to local disk for demo/dev.
+   * UploadThing credentials are validated only when this is `uploadthing`.
+   */
+  ASSET_PROVIDER: z.enum(["disk", "uploadthing"]).default("disk"),
+  /** Local disk root for ASSET_PROVIDER=disk. Relative paths resolve from cwd. */
+  ASSET_DISK_DIR: z.string().min(1).default(".local-assets"),
+  /**
+   * UploadThing API token (base64 JSON). Optional at boot; required lazily when
+   * ASSET_PROVIDER=uploadthing performs network operations or URL resolution.
+   */
+  UPLOADTHING_TOKEN: z.string().optional(),
 });
 
 const seedEnvSchema = z.object({

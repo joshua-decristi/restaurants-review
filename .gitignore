@@ -24,6 +24,9 @@
 .DS_Store
 *.pem
 
+# local disk asset store (ASSET_PROVIDER=disk)
+.local-assets/
+
 # debug
 /logs
 **/*.log
