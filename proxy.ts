@@ -10,7 +10,7 @@ import { getSession } from "@/lib/auth/server";
  */
 
 /** Exact routes reachable without a session. */
-const PUBLIC_PATHS = new Set(["/", "/login"]);
+const PUBLIC_PATHS = new Set(["/", "/login", "/register"]);
 
 /** Route prefixes (with their descendants) reachable without a session. */
 const PUBLIC_PREFIXES = ["/api/auth", "/api/assets", "/restaurants"];
