@@ -13,6 +13,11 @@ if (typeof globalThis.TextDecoder === "undefined") {
  * Every test run requires a complete local environment and a local Postgres
  * database. Read process.env directly so this hook never imports server-only
  * application modules before the safety checks pass.
+ *
+ * Isolation policy (intentional): tests share `DATABASE_URL` with local dev.
+ * There is no `TEST_DATABASE_URL`. Safety is hostname localhost/127.0.0.1 +
+ * serial `--runInBand` + per-file `resetDatabase`. That truncates the same DB
+ * used by `pnpm db:seed`.
  */
 beforeAll(() => {
   const required = ["DATABASE_DRIVER", "DATABASE_URL", "AUTH_SECRET"] as const;
@@ -42,4 +47,7 @@ beforeAll(() => {
   if (hostname !== "localhost" && hostname !== "127.0.0.1") {
     throw new Error(`DATABASE_URL hostname must be localhost or 127.0.0.1 for tests (got ${JSON.stringify(hostname)}).`);
   }
+
+  // TEST_DATABASE_URL is intentionally unused (project forbids a second DB URL).
+  // A leftover value in .env does not redirect tests; DATABASE_URL remains authoritative.
 });

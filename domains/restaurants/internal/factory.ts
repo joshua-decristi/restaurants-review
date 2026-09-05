@@ -127,7 +127,7 @@ export function restaurantsFactory(executor: DbExecutor, factoryOptions: Factory
 
       let ownerId = overrides.ownerId;
       if (ownerId === undefined) {
-        const owner = await usersFactory(executor, factoryOptions).fakeUser({ role: "owner" }, {});
+        const owner = await usersFactory(executor, factoryOptions).fakeUser({ role: "owner" });
         ownerId = owner.id;
       } else {
         const owner = (await executor.select().from(users).where(eq(users.id, ownerId)).limit(1)).at(0);

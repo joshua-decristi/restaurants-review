@@ -2,7 +2,7 @@ import type { Faker } from "@faker-js/faker";
 
 import { credentialsSchema } from "@/lib/auth/credentials/server";
 import { hashPassword } from "@/lib/auth/password/server";
-import type { DbExecutor, FactoryOptions, FakeRecordOptions } from "@/lib/db/server";
+import type { DbExecutor, FactoryOptions } from "@/lib/db/server";
 import { createFaker } from "@/lib/db/server";
 
 import type { Role } from "./roles";
@@ -46,11 +46,9 @@ export function usersFactory(executor: DbExecutor, factoryOptions: FactoryOption
   };
 
   return {
-    async fakeUser(overrides: FakeUserOverrides = {}, fakeRecordOptions: FakeRecordOptions = {}): Promise<User> {
+    async fakeUser(overrides: FakeUserOverrides = {}): Promise<User> {
       const values = await buildUserValues(await getFaker(), overrides);
-      const [row] = fakeRecordOptions.upsert
-        ? await executor.insert(users).values(values).onConflictDoUpdate({ target: users.email, set: values }).returning()
-        : await executor.insert(users).values(values).returning();
+      const [row] = await executor.insert(users).values(values).returning();
 
       // Runtime guard: empty returning() would mean a driver/protocol failure.
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- defensive

@@ -167,7 +167,7 @@ afterAll(async () => {
 
 describe("public reads", () => {
   it("lists and fetches restaurants with nested address and imageUrl, never imageKey", async () => {
-    const owner = await usersApi().fakeUser({ role: "owner" }, {});
+    const owner = await usersApi().fakeUser({ role: "owner" });
     const created = await restaurantsFactory(db).fakeRestaurant({ ownerId: owner.id, title: "Listed Cafe" });
 
     const listed = await listRestaurants();
@@ -192,8 +192,8 @@ describe("public reads", () => {
 
 describe("owner create", () => {
   it("creates restaurant + address for an owner and rejects non-owners before upload", async () => {
-    const owner = await usersApi().fakeUser({ role: "owner" }, {});
-    const reviewer = await usersApi().fakeUser({ role: "reviewer" }, {});
+    const owner = await usersApi().fakeUser({ role: "owner" });
+    const reviewer = await usersApi().fakeUser({ role: "reviewer" });
 
     const beforeAddresses = await db.select().from(addresses);
     const beforeRestaurants = await db.select().from(restaurants);
@@ -222,7 +222,7 @@ describe("owner create", () => {
   });
 
   it("requires a valid image on create", async () => {
-    const owner = await usersApi().fakeUser({ role: "owner" }, {});
+    const owner = await usersApi().fakeUser({ role: "owner" });
     const bad = new File([Uint8Array.of(1, 2, 3)], "x.gif", { type: "image/gif" });
     const result = await createRestaurant(owner.id, validInput(), bad);
     expect(result.ok).toBe(false);
@@ -232,7 +232,7 @@ describe("owner create", () => {
   });
 
   it("rejects missing required restaurant and address fields before upload", async () => {
-    const owner = await usersApi().fakeUser({ role: "owner" }, {});
+    const owner = await usersApi().fakeUser({ role: "owner" });
     const incomplete = {
       title: "",
       description: "desc",
@@ -260,7 +260,7 @@ describe("owner create", () => {
 
 describe("create CTE atomicity and cleanup", () => {
   it("rolls back address when restaurant insert fails and cleans up the uploaded key", async () => {
-    const owner = await usersApi().fakeUser({ role: "owner" }, {});
+    const owner = await usersApi().fakeUser({ role: "owner" });
     const beforeAddresses = await db.select().from(addresses);
     const beforeRestaurants = await db.select().from(restaurants);
 
@@ -280,7 +280,7 @@ describe("create CTE atomicity and cleanup", () => {
   });
 
   it("preserves the original DB error when cleanup also fails", async () => {
-    const owner = await usersApi().fakeUser({ role: "owner" }, {});
+    const owner = await usersApi().fakeUser({ role: "owner" });
     uploadAsset.mockResolvedValueOnce("key-cleanup-fails");
     deleteAsset.mockRejectedValueOnce(new Error("cleanup blew up"));
 
@@ -296,8 +296,8 @@ describe("create CTE atomicity and cleanup", () => {
 
 describe("partial owner update", () => {
   it("updates single restaurant and address fields; rejects empty and foreign owners", async () => {
-    const owner = await usersApi().fakeUser({ role: "owner" }, {});
-    const other = await usersApi().fakeUser({ role: "owner" }, {});
+    const owner = await usersApi().fakeUser({ role: "owner" });
+    const other = await usersApi().fakeUser({ role: "owner" });
     const created = await createRestaurant(owner.id, validInput({ title: "Original", description: "Keep me" }), tinyPng);
     expect(created.ok).toBe(true);
     if (!created.ok) return;
@@ -327,7 +327,7 @@ describe("partial owner update", () => {
   });
 
   it("supports image-only replacement and cleans up missing-target uploads", async () => {
-    const owner = await usersApi().fakeUser({ role: "owner" }, {});
+    const owner = await usersApi().fakeUser({ role: "owner" });
     const imageA = await loadRaw("cozy-cafe.jpg");
     const imageB = await loadRaw("rustic-tuscan.jpg");
 
@@ -354,7 +354,7 @@ describe("partial owner update", () => {
   });
 
   it("deletes the replacement image and retains the old key when the DB update fails", async () => {
-    const owner = await usersApi().fakeUser({ role: "owner" }, {});
+    const owner = await usersApi().fakeUser({ role: "owner" });
     const imageA = await loadRaw("cozy-cafe.jpg");
     const imageB = await loadRaw("rustic-tuscan.jpg");
 
@@ -380,8 +380,8 @@ describe("partial owner update", () => {
 
 describe("owner delete", () => {
   it("hard-deletes restaurant and address, then best-effort deletes the image", async () => {
-    const owner = await usersApi().fakeUser({ role: "owner" }, {});
-    const other = await usersApi().fakeUser({ role: "owner" }, {});
+    const owner = await usersApi().fakeUser({ role: "owner" });
+    const other = await usersApi().fakeUser({ role: "owner" });
     uploadAsset.mockResolvedValueOnce("delete-me-key");
     const created = await createRestaurant(owner.id, validInput({ title: "Temp" }), tinyPng);
     expect(created.ok).toBe(true);
@@ -412,7 +412,7 @@ describe("owner delete", () => {
 
 describe("validation matrix", () => {
   it("enforces field lengths, cuisine whitespace collapse, and image constraints", async () => {
-    const owner = await usersApi().fakeUser({ role: "owner" }, {});
+    const owner = await usersApi().fakeUser({ role: "owner" });
 
     const longTitle = await createRestaurant(owner.id, validInput({ title: "x".repeat(121) }), tinyPng);
     expect(longTitle).toMatchObject({ ok: false, error: "validation" });
@@ -471,8 +471,8 @@ describe("validation matrix", () => {
 
 describe("factory", () => {
   it("creates deterministic fixtures, validates ownerId, and accepts image overrides", async () => {
-    const owner = await usersApi().fakeUser({ role: "owner" }, {});
-    const reviewer = await usersApi().fakeUser({ role: "reviewer" }, {});
+    const owner = await usersApi().fakeUser({ role: "owner" });
+    const reviewer = await usersApi().fakeUser({ role: "reviewer" });
 
     // Same seed + same owner avoids email collisions and proves Faker isolation.
     const a = await restaurantsFactory(db, { seed: 42 }).fakeRestaurant({ ownerId: owner.id });

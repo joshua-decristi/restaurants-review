@@ -5,11 +5,6 @@ export interface FactoryOptions {
   seed?: number;
 }
 
-export interface FakeRecordOptions {
-  /** When true, upsert on conflict instead of plain insert. */
-  upsert?: boolean;
-}
-
 /** Creates an isolated Faker instance so factory seeds never touch global state. */
 export async function createFaker(seed?: number): Promise<Faker> {
   const { Faker, en } = await import("@faker-js/faker");
