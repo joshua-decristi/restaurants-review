@@ -122,8 +122,10 @@ export default defineConfig([
   },
 
   // Runtime dependency flow is domain -> lib; /lib never imports domains.
+  // /lib/auth is allowed since it needs user data
   {
     files: ["lib/**/*.{ts,tsx}"],
+    ignores: ["lib/auth/**/*.{ts,tsx}"],
     rules: {
       "no-restricted-imports": [
         "error",

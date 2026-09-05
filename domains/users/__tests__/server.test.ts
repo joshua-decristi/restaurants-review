@@ -11,10 +11,9 @@
 
 import { encode } from "next-auth/jwt";
 
+import { getSession } from "@/lib/auth/server";
 import { serverEnv } from "@/lib/env/server";
 import { getServerLogger } from "@/lib/logging/server";
-
-import { getSession } from "../server";
 
 jest.mock("@/lib/env/server", () => ({
   serverEnv: { AUTH_SECRET: "integration-test-secret-0123456789abcdef" },

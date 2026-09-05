@@ -1,6 +1,6 @@
 "use server";
 
-import { login } from "@/domains/users/server";
+import { login } from "@/lib/auth/server";
 
 export interface LoginActionState {
   error: string | null;
@@ -20,7 +20,7 @@ function formString(formData: FormData, key: string): string {
 export async function loginAction(_state: LoginActionState, formData: FormData): Promise<LoginActionState> {
   const email = formString(formData, "email");
   const password = formString(formData, "password");
-  const result = await login({ email, password });
+  const result = await login.credentials({ email, password });
 
   if (!result.ok) return { error: "Invalid email or password." };
   return { error: null };

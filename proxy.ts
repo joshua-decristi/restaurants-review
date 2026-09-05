@@ -1,12 +1,12 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
-import { getSession } from "@/domains/users/server";
+import { getSession } from "@/lib/auth/server";
 
 /**
  * Thin transport authorization: every application route is private unless it
- * is explicitly public below. Role and route-to-role policy live in the users
- * domain; this file only enforces it against the session boundary.
+ * is explicitly public below. This file only checks session existence; role
+ * routing is handled after login.
  */
 
 /** Exact routes reachable without a session. */

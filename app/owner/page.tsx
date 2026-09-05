@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-import { getSession } from "@/domains/users/server";
+import { getSession } from "@/lib/auth/server";
 
 /** Disposable proof page: shows only the session user's email and role. */
 export default async function OwnerPage() {

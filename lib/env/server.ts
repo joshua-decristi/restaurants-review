@@ -7,10 +7,10 @@ const serverEnvSchema = z.object({
    * Runtime driver:
    * - "development" = dev-server;
    * - "production" = production-build
-   * - "testing" = jest test runner
+   * - "test" = jest test runner
    * - "nullish" = manual seeding
    */
-  NODE_ENV: z.enum(["production", "development", "testing"]).nullish(),
+  NODE_ENV: z.enum(["production", "development", "test"]).nullish(),
   /** Runtime database driver: local container (postgres.js) or Neon serverless. */
   DATABASE_DRIVER: z.enum(["postgres", "neon"]),
   /** PostgreSQL connection string for the selected runtime driver. */

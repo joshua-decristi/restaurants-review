@@ -1,10 +1,10 @@
 import "dotenv/config";
 
+import { normalizeEmail } from "@/lib/auth/credentials/server";
+import { hashPassword } from "@/lib/auth/password/server";
 import { closeDatabase, db } from "@/lib/db/server";
 import { getSeedEnv } from "@/lib/env/server";
 
-import { normalizeEmail } from "./internal/credentials/server";
-import { hashPassword } from "./internal/password/server";
 import type { Role } from "./internal/roles";
 import { users } from "./internal/schema";
 
