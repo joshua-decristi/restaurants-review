@@ -1,4 +1,3 @@
-import { getLogger as getDrizzleLogger } from "@logtape/drizzle-orm";
 import { neon } from "@neondatabase/serverless";
 import type { NeonHttpDatabase } from "drizzle-orm/neon-http";
 import { drizzle as drizzleNeon } from "drizzle-orm/neon-http";
@@ -21,10 +20,6 @@ function createDatabase(): Database {
   switch (serverEnv.DATABASE_DRIVER) {
     case "postgres": {
       postgresClient = postgres(serverEnv.DATABASE_URL);
-
-      if (serverEnv.NODE_ENV === "development")
-        // Only add logging in development mode
-        return drizzlePostgresJs(postgresClient, { logger: getDrizzleLogger({ category: "database" }) });
 
       return drizzlePostgresJs(postgresClient);
     }

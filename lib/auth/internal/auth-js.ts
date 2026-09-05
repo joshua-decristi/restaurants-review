@@ -5,10 +5,9 @@
  */
 
 import type { DefaultSession, NextAuthConfig, User } from "next-auth";
-import NextAuth, { AuthError } from "next-auth";
+import NextAuth from "next-auth";
 
 import { serverEnv } from "@/lib/env/server";
-import { getServerLogger } from "@/lib/logging/server";
 
 import type { AuthUser } from "./session";
 
@@ -32,23 +31,11 @@ declare module "next-auth/jwt" {
   }
 }
 
-const Logger = getServerLogger();
-
-function logError(error: Error) {
-  const type = error instanceof AuthError ? error.type : error.name;
-
-  if (type === "JWTSessionError") Logger.warn("Session rejected: invalid token");
-  else Logger.error(error);
-}
-
 export function createAuthjsAdapter(providers: NextAuthConfig["providers"]) {
   return NextAuth({
     secret: serverEnv.AUTH_SECRET,
     trustHost: true,
     session: { strategy: "jwt" },
-    // Expected invalid tokens surface as JWTSessionError; log one concise
-    // warning without a stack. Unexpected Auth.js failures keep full errors.
-    logger: { error: logError },
     providers,
     callbacks: {
       // The verified role is baked into the signed JWT when credentials are

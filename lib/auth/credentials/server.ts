@@ -4,12 +4,9 @@ import { z } from "zod";
 import type { User } from "@/domains/users/server";
 import { users } from "@/domains/users/server";
 import { db } from "@/lib/db/server";
-import { getServerLogger } from "@/lib/logging/server";
 
 import { AuthUser } from "../internal/session";
 import { verifyPassword } from "../password/server";
-
-const Logger = getServerLogger();
 
 export type Credentials = z.infer<typeof credentialsSchema>;
 
@@ -28,18 +25,11 @@ async function authorizeWithCredentials(rawInput: unknown): Promise<AuthUser | n
   if (!credentials) return null;
 
   const user = await getUserByEmail(credentials.email);
-  if (!user) {
-    Logger.warn("No user found with email", { email: credentials.email });
-    return null;
-  }
+  if (!user) return null;
 
   const isValid = await verifyPassword(credentials.password, user.passwordHash);
-  if (!isValid) {
-    Logger.warn("Failed to hash password", { userId: user.id });
-    return null;
-  }
+  if (!isValid) return null;
 
-  Logger.info("User authenticated", { userId: user.id });
   return {
     id: String(user.id),
     email: user.email,

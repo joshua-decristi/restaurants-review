@@ -1,7 +1,6 @@
 /**
  * Public users/auth session coverage plus one real-database factory case.
  * Session cases use JWT encoding as setup only and assert via `getSession`.
- * Logging is mocked because concise warning behavior is an observable contract.
  *
  * @jest-environment node
  */
@@ -13,30 +12,8 @@ import { verifyPassword } from "@/lib/auth/password/server";
 import { getSession } from "@/lib/auth/server";
 import { closeDatabase, db, resetDatabase } from "@/lib/db/server";
 import { serverEnv } from "@/lib/env/server";
-import { getServerLogger } from "@/lib/logging/server";
 
 import { users, usersFactory } from "../server";
-
-jest.mock("@/lib/logging/server", () => {
-  const logger = {
-    debug: jest.fn(),
-    info: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
-    fatal: jest.fn(),
-  };
-  return { getServerLogger: () => logger };
-});
-
-interface LoggerMock {
-  debug: jest.Mock;
-  info: jest.Mock;
-  warn: jest.Mock;
-  error: jest.Mock;
-  fatal: jest.Mock;
-}
-
-const logger = getServerLogger() as unknown as LoggerMock;
 
 /** Auth.js session-cookie name (non-secure variant, as served over http). */
 const SESSION_COOKIE = "authjs.session-token";
@@ -55,10 +32,20 @@ async function sessionToken(claims: { sub: string; email: string; role?: string 
   return encode({ token: claims, secret: AUTH_SECRET, salt: SESSION_COOKIE, maxAge });
 }
 
-/** Asserts expected invalid-token handling: one warn, no error stacks. */
-function expectOneConciseWarning(message: string) {
-  expect(logger.warn.mock.calls).toEqual([[message]]);
-  expect(logger.error.mock.calls).toHaveLength(0);
+/**
+ * Auth.js surfaces expected JWT failures (tampered/expired tokens) through its
+ * default console.error logger. Mutes that output for one session read, asserts
+ * the expected JWTSessionError diagnostics occurred, and restores console.error
+ * even when assertions fail.
+ */
+async function expectSessionRejectedAndLogged(request: Request): Promise<void> {
+  const consoleError = jest.spyOn(console, "error").mockImplementation(() => undefined);
+  try {
+    await expect(getSession(request)).resolves.toBeNull();
+    expect(consoleError.mock.calls.some(([line]) => String(line).includes("JWTSessionError"))).toBe(true);
+  } finally {
+    consoleError.mockRestore();
+  }
 }
 
 beforeAll(async () => {
@@ -69,10 +56,6 @@ afterAll(async () => {
   await closeDatabase();
 });
 
-beforeEach(() => {
-  jest.clearAllMocks();
-});
-
 const reviewerClaims = { sub: "42", email: "reviewer@example.com", role: "reviewer" } as const;
 const ownerClaims = { sub: "7", email: "owner@example.com", role: "owner" } as const;
 
@@ -80,50 +63,38 @@ it("returns the typed session for a correctly signed, unexpired reviewer JWT", a
   const session = await getSession(sessionRequest(await sessionToken(reviewerClaims)));
 
   expect(session).toEqual({ user: { id: "42", email: "reviewer@example.com", role: "reviewer" } });
-  expect(logger.warn.mock.calls).toHaveLength(0);
-  expect(logger.error.mock.calls).toHaveLength(0);
 });
 
 it("returns the typed session for a correctly signed, unexpired owner JWT", async () => {
   const session = await getSession(sessionRequest(await sessionToken(ownerClaims)));
 
   expect(session).toEqual({ user: { id: "7", email: "owner@example.com", role: "owner" } });
-  expect(logger.warn.mock.calls).toHaveLength(0);
-  expect(logger.error.mock.calls).toHaveLength(0);
 });
 
-it("returns null without logging when no session cookie is present", async () => {
+it("returns null when no session cookie is present", async () => {
   expect(await getSession(sessionRequest())).toBeNull();
-  expect(logger.warn.mock.calls).toHaveLength(0);
-  expect(logger.error.mock.calls).toHaveLength(0);
 });
 
-it("returns null for a tampered token with one concise warning", async () => {
+it("returns null for a tampered token", async () => {
   const token = await sessionToken(reviewerClaims);
   const tampered = token.slice(0, 20) + "00000000" + token.slice(28);
 
-  expect(await getSession(sessionRequest(tampered))).toBeNull();
-  expectOneConciseWarning("Session rejected: invalid token");
+  await expectSessionRejectedAndLogged(sessionRequest(tampered));
 });
 
-it("returns null for an expired token with one concise warning", async () => {
+it("returns null for an expired token", async () => {
   const expired = await sessionToken(reviewerClaims, -60);
 
-  expect(await getSession(sessionRequest(expired))).toBeNull();
-  expectOneConciseWarning("Session rejected: invalid token");
+  await expectSessionRejectedAndLogged(sessionRequest(expired));
 });
 
-it("returns null for missing or unsupported role claims with one concise warning each", async () => {
+it("returns null for missing or unsupported role claims", async () => {
   const missingRole = await sessionToken({ sub: "42", email: "reviewer@example.com" });
   const unsupportedRole = await sessionToken({ sub: "42", email: "reviewer@example.com", role: "admin" });
 
   expect(await getSession(sessionRequest(missingRole))).toBeNull();
-  expectOneConciseWarning("Session rejected: invalid claims");
-
-  jest.clearAllMocks();
 
   expect(await getSession(sessionRequest(unsupportedRole))).toBeNull();
-  expectOneConciseWarning("Session rejected: invalid claims");
 });
 
 it("persists a factory user with normalized email, role, and hashed password", async () => {

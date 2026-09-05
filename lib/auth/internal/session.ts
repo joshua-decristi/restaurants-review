@@ -4,14 +4,11 @@ import CredentialProvider from "next-auth/providers/credentials";
 
 import type { Role } from "@/domains/users/server";
 import { isRole } from "@/domains/users/server";
-import { getServerLogger } from "@/lib/logging/server";
 
 import type { Credentials } from "../credentials/server";
 import { credentialsProvider } from "../credentials/server";
 
 import { createAuthjsAdapter } from "./auth-js";
-
-const Logger = getServerLogger();
 
 /** Stable session-user shape hidden behind the wrapper. */
 export interface AuthUser {
@@ -29,9 +26,8 @@ export type LoginResult = { ok: true } | { ok: false; error: "invalid-credential
 
 const { auth, handlers, signIn, signOut } = createAuthjsAdapter([CredentialProvider(credentialsProvider)]);
 
-/** Logs and returns the single opaque login failure. */
+/** Returns the single opaque login failure. */
 function rejectLogin(): LoginResult {
-  getServerLogger().warn("Login rejected: invalid credentials");
   return { ok: false, error: "invalid-credentials" };
 }
 
@@ -54,7 +50,6 @@ export const login = {
 
 /** Signs the user out; completes via a framework redirect. */
 export async function logout(redirectTo = "/"): Promise<void> {
-  Logger.info("User logged out");
   await signOut({ redirectTo });
 }
 
@@ -80,11 +75,8 @@ function mapSession(session: Session | null): { user: AuthUser } | null {
   const { id, email, role } = session.user;
 
   // Decrypted JWT claims are re-validated at this trust boundary. Missing or
-  // unsupported roles are expected failures: one concise warning, no stack.
-  if (!id || !email || !isRole(role)) {
-    Logger.warn("Session rejected: invalid claims");
-    return null;
-  }
+  // unsupported roles are expected failures and stay quiet.
+  if (!id || !email || !isRole(role)) return null;
 
   return { user: { id, email, role } };
 }

@@ -6,7 +6,6 @@ import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 import { users } from "@/domains/users/server";
 import { deleteAsset, uploadAsset } from "@/lib/assets/server";
 import { db as rootDb } from "@/lib/db/server";
-import { getServerLogger } from "@/lib/logging/server";
 
 import { getRestaurant } from "./queries";
 import { addresses, restaurants } from "./schema";
@@ -29,8 +28,6 @@ import {
  */
 const db: PgDatabase<PgQueryResultHKT> = rootDb;
 
-const Logger = getServerLogger();
-
 async function requireOwnerUserId(userId: number): Promise<boolean> {
   if (!Number.isSafeInteger(userId) || userId <= 0) return false;
   const rows = await db.select({ role: users.role }).from(users).where(eq(users.id, userId)).limit(1);
@@ -38,13 +35,11 @@ async function requireOwnerUserId(userId: number): Promise<boolean> {
 }
 
 /**
- * Best-effort asset delete. When `rethrow` is set, cleanup failures are logged
- * and the original error is preserved; otherwise cleanup failures only warn.
+ * Best-effort asset delete: cleanup failures are swallowed. When `rethrow` is
+ * set, the original error is preserved and rethrown.
  */
 async function cleanupAsset(key: string, rethrow?: unknown): Promise<void> {
-  await deleteAsset(key).catch(() => {
-    Logger.warn("Asset cleanup failed after restaurant mutation");
-  });
+  await deleteAsset(key).catch(() => undefined);
 
   if (rethrow === undefined) return;
   // Preserve Error instances (DB failures); wrap non-Errors for the throw contract.

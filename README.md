@@ -62,7 +62,6 @@ The production column provides future context; only the demo stack is in scope.
 | Auth              | Auth.js Credentials + JWT | Secure email/password sessions with role-aware identities            |
 | File Storage      | UploadThing               | Direct uploads behind a small, replaceable storage interface         |
 | Testing           | Jest + RTL, Faker.js      | Test deep-module contracts, integration boundaries, & key user flows |
-| Logging           | LogTape                   | Structured logs across All 3 Next.js Environments                    |
 
 NOTE: I would choose [Effect.js](https://www.effect.website/) in production because it strengthens native TS by encoding errors & asynchronous tasks directly into the type system. I'm not using it here because it is TOO complex for a simplified restaurant review platform.
 

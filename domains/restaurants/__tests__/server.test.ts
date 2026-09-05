@@ -23,18 +23,6 @@ import {
 import { usersFactory } from "@/domains/users/server";
 import * as assets from "@/lib/assets/server";
 import { closeDatabase, db, resetDatabase } from "@/lib/db/server";
-import { getServerLogger } from "@/lib/logging/server";
-
-jest.mock("@/lib/logging/server", () => {
-  const logger = {
-    debug: jest.fn(),
-    info: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
-    fatal: jest.fn(),
-  };
-  return { getServerLogger: () => logger };
-});
 
 jest.mock("@/lib/assets/server", () => ({
   uploadAsset: jest.fn((file: File) => Promise.resolve(`key-${file.name}-${String(file.size)}`)),
@@ -47,7 +35,6 @@ jest.mock("@/lib/assets/server", () => ({
 const uploadAsset = jest.mocked(assets.uploadAsset);
 const deleteAsset = jest.mocked(assets.deleteAsset);
 const resolveAssetUrl = jest.mocked(assets.resolveAssetUrl);
-const logger = getServerLogger() as unknown as { warn: jest.Mock };
 
 const RAW_IMAGES = join(process.cwd(), ".agent/plans/restaurants/raw-images");
 
@@ -287,7 +274,6 @@ describe("create CTE atomicity and cleanup", () => {
     await db.execute(sql`ALTER TABLE restaurants ADD CONSTRAINT restaurants_title_not_boom2 CHECK (title <> 'BOOM_FAIL_CLEAN')`);
     try {
       await expect(createRestaurant(owner.id, validInput({ title: "BOOM_FAIL_CLEAN" }), tinyPng)).rejects.toThrow();
-      expect(logger.warn).toHaveBeenCalledWith("Asset cleanup failed after restaurant mutation");
     } finally {
       await db.execute(sql`ALTER TABLE restaurants DROP CONSTRAINT IF EXISTS restaurants_title_not_boom2`);
     }
@@ -393,7 +379,6 @@ describe("owner delete", () => {
     deleteAsset.mockRejectedValueOnce(new Error("storage down"));
     const deleted = await deleteRestaurant(owner.id, created.data.id);
     expect(deleted).toEqual({ ok: true, data: null });
-    expect(logger.warn).toHaveBeenCalledWith("Asset cleanup failed after restaurant mutation");
 
     expect((await db.select().from(addresses)).length).toBe(addressCountBefore - 1);
     expect((await db.select().from(restaurants)).length).toBe(restaurantCountBefore - 1);

@@ -1,7 +1,7 @@
 import "@testing-library/jest-dom";
 import { TextDecoder, TextEncoder } from "node:util";
 
-// jsdom lacks TextEncoder/TextDecoder; LogTape formatters need them at import time.
+// jsdom lacks TextEncoder/TextDecoder; some dependencies expect them at import time.
 if (typeof globalThis.TextEncoder === "undefined") {
   globalThis.TextEncoder = TextEncoder;
 }
