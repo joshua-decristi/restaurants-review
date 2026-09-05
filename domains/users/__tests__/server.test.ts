@@ -13,7 +13,7 @@ import { getSession } from "@/lib/auth/server";
 import { closeDatabase, db, resetDatabase } from "@/lib/db/server";
 import { serverEnv } from "@/lib/env/server";
 
-import { userNameSchema, users, usersFactory } from "../server";
+import { registerUser, userNameSchema, users, usersFactory } from "../server";
 
 /** Auth.js session-cookie name (non-secure variant, as served over http). */
 const SESSION_COOKIE = "authjs.session-token";
@@ -145,4 +145,89 @@ it("accepts boundary display names of length 1 and 100", () => {
   expect(userNameSchema.parse("A")).toBe("A");
   expect(userNameSchema.parse("x".repeat(100))).toHaveLength(100);
   expect(userNameSchema.parse("  Trimmed  ")).toBe("Trimmed");
+});
+
+describe("registerUser", () => {
+  it.each(["reviewer", "owner"] as const)("registers a %s with normalized email, trimmed name, and hashed password", async (role) => {
+    const plaintextPassword = "secure-password-12";
+    const normalizedEmail = `${role}.ada@example.com`;
+    const result = await registerUser({
+      name: "  Ada Lovelace  ",
+      email: `  ${role}.Ada@Example.COM `,
+      password: plaintextPassword,
+      role,
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    expect(result.user.id).toEqual(expect.any(Number));
+    expect(result.user).toMatchObject({
+      email: normalizedEmail,
+      name: "Ada Lovelace",
+      role,
+    });
+    expect(result.user).not.toHaveProperty("passwordHash");
+    expect(result.user).not.toHaveProperty("password");
+    expect(JSON.stringify(result)).not.toContain(plaintextPassword);
+
+    const rows = await db.select().from(users).where(eq(users.id, result.user.id));
+    expect(rows).toHaveLength(1);
+    const persisted = rows[0];
+
+    expect(persisted.email).toBe(normalizedEmail);
+    expect(persisted.name).toBe("Ada Lovelace");
+    expect(persisted.role).toBe(role);
+    expect(persisted.passwordHash).not.toBe(plaintextPassword);
+    expect(JSON.stringify(persisted)).not.toContain(plaintextPassword);
+    await expect(verifyPassword(plaintextPassword, persisted.passwordHash)).resolves.toBe(true);
+  });
+
+  it.each([
+    { label: "blank name", input: { name: "   ", email: "valid@example.com", password: "password1", role: "reviewer" as const }, path: "name" },
+    {
+      label: "over-100 name",
+      input: { name: "x".repeat(101), email: "valid@example.com", password: "password1", role: "reviewer" as const },
+      path: "name",
+    },
+    { label: "invalid email", input: { name: "Ada", email: "not-an-email", password: "password1", role: "owner" as const }, path: "email" },
+    { label: "short password", input: { name: "Ada", email: "valid@example.com", password: "short", role: "reviewer" as const }, path: "password" },
+    { label: "missing role", input: { name: "Ada", email: "valid@example.com", password: "password1", role: undefined }, path: "role" },
+    { label: "unsupported role", input: { name: "Ada", email: "valid@example.com", password: "password1", role: "admin" }, path: "role" },
+  ])("rejects $label without writing a user", async ({ input, path }) => {
+    const before = await db.select({ id: users.id }).from(users);
+
+    const result = await registerUser(input as Parameters<typeof registerUser>[0]);
+
+    expect(result).toMatchObject({ ok: false, error: "validation" });
+    if (result.ok || result.error !== "validation") return;
+    expect(result.fieldErrors[path]).toEqual(expect.any(String));
+
+    const after = await db.select({ id: users.id }).from(users);
+    expect(after).toHaveLength(before.length);
+  });
+
+  it("maps duplicate normalized email to already-exists via users_email_unique", async () => {
+    const first = await registerUser({
+      name: "First User",
+      email: "dup.user@example.com",
+      password: "password-one",
+      role: "reviewer",
+    });
+    expect(first.ok).toBe(true);
+
+    const duplicate = await registerUser({
+      name: "Second User",
+      email: "  Dup.User@Example.COM ",
+      password: "password-two",
+      role: "owner",
+    });
+
+    expect(duplicate).toEqual({ ok: false, error: "already-exists" });
+
+    const rows = await db.select().from(users).where(eq(users.email, "dup.user@example.com"));
+    expect(rows).toHaveLength(1);
+    expect(rows[0].name).toBe("First User");
+    expect(rows[0].role).toBe("reviewer");
+  });
 });
