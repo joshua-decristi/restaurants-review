@@ -150,7 +150,7 @@ cp .env.example .env   # then set AUTH_SECRET (see below)
 pnpm install
 pnpm db:up             # start PostgreSQL (health-checked, named volume)
 pnpm db:push           # create the schema with drizzle-kit push (no migrations)
-pnpm db:seed           # upsert the two seeded development accounts (see below)
+pnpm db:seed           # destructive reset-first demo seed (see below)
 ```
 
 The app and `pnpm test` both require a complete local environment: `DATABASE_DRIVER=postgres`,
@@ -187,7 +187,7 @@ Everyday commands:
 - `pnpm lint` / `pnpm lint:fix` — ESLint (zero warnings enforced) with Prettier
 - `pnpm type-check` — TypeScript project check
 - `pnpm test` — all unit and integration tests serially (`--runInBand`); requires local Postgres
-- `pnpm db:seed` — upsert the two seeded development accounts (idempotent)
+- `pnpm db:seed` — destructive reset-first demo seed (users + 3 restaurants/images)
 - `pnpm db:reset` — truncate all application tables (`RESTART IDENTITY CASCADE`)
 - `pnpm db:studio` — Drizzle Studio (optional)
 - `pnpm db:down` — stop the PostgreSQL container (data persists in the `takehome-db-data` volume)
