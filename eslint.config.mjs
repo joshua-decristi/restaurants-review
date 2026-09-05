@@ -93,7 +93,7 @@ export default defineConfig([
   // touch persistence infrastructure or private domain implementation files
   // directly. Outside consumers may import a domain only through its public
   // `index`, `client`, or `server` entry points; deeper imports (including
-  // private sub-module entry points such as @/domains/users/auth/server)
+  // private sub-module entry points). Auth lives at @/lib/auth/server.
   // cross module boundaries and are forbidden.
   {
     files: ["app/**/*.{ts,tsx}", "components/**/*.{ts,tsx}"],
@@ -110,8 +110,8 @@ export default defineConfig([
               // Restricts every @/domains/** import except the public entry
               // points: a bare domain import (resolves to index) or an explicit
               // index/client/server file, with or without extension. Private
-              // implementation files and sub-module entry points such as
-              // @/domains/users/auth/server are matched and rejected.
+              // implementation files and sub-module entry points are matched
+              // and rejected. Auth is imported from @/lib/auth/server.
               regex: "^@/domains/(?!([^/]+)(?:/(?:index|client|server)(?:\\.[cm]?[jt]sx?)?)?$).+$",
               message: "Import domain modules only through their public index, client, or server entry points (e.g. @/domains/users/server).",
             },

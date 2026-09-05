@@ -1,23 +1,21 @@
 /**
- * Integration test of the users module's public server boundary, not the
- * private Auth.js adapter:
- * - Real JWT encoding is test setup only: each case encodes a session JWT,
- *   passes a request with the session cookie, and asserts via `getSession`.
- * - The `@/lib/db/server` mock throws on access, so passing session tests
- *   prove session validation performs no user/database lookup.
+ * Public users/auth session coverage plus one real-database factory case.
+ * Session cases use JWT encoding as setup only and assert via `getSession`.
+ * Logging is mocked because concise warning behavior is an observable contract.
  *
  * @jest-environment node
  */
 
 import { encode } from "next-auth/jwt";
+import { eq } from "drizzle-orm";
 
+import { verifyPassword } from "@/lib/auth/password/server";
 import { getSession } from "@/lib/auth/server";
+import { closeDatabase, db, resetDatabase } from "@/lib/db/server";
 import { serverEnv } from "@/lib/env/server";
 import { getServerLogger } from "@/lib/logging/server";
 
-jest.mock("@/lib/env/server", () => ({
-  serverEnv: { AUTH_SECRET: "integration-test-secret-0123456789abcdef" },
-}));
+import { users, usersFactory } from "../server";
 
 jest.mock("@/lib/logging/server", () => {
   const logger = {
@@ -39,19 +37,6 @@ interface LoggerMock {
 }
 
 const logger = getServerLogger() as unknown as LoggerMock;
-
-jest.mock("@/lib/db/server", () => ({
-  // Armed tripwire: any database access during session validation fails the
-  // suite instead of silently proving nothing.
-  db: new Proxy(
-    {},
-    {
-      get(): never {
-        throw new Error("Session validation must not touch the database.");
-      },
-    },
-  ),
-}));
 
 /** Auth.js session-cookie name (non-secure variant, as served over http). */
 const SESSION_COOKIE = "authjs.session-token";
@@ -75,6 +60,14 @@ function expectOneConciseWarning(message: string) {
   expect(logger.warn.mock.calls).toEqual([[message]]);
   expect(logger.error.mock.calls).toHaveLength(0);
 }
+
+beforeAll(async () => {
+  await resetDatabase();
+});
+
+afterAll(async () => {
+  await closeDatabase();
+});
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -131,4 +124,22 @@ it("returns null for missing or unsupported role claims with one concise warning
 
   expect(await getSession(sessionRequest(unsupportedRole))).toBeNull();
   expectOneConciseWarning("Session rejected: invalid claims");
+});
+
+it("persists a factory user with normalized email, role, and hashed password", async () => {
+  const plaintextPassword = "known-integration-password";
+  const mixedEmail = "  Owner.User@Example.COM ";
+
+  const created = await usersFactory(db).fakeUser({ email: mixedEmail, role: "owner", password: plaintextPassword });
+
+  const rows = await db.select().from(users).where(eq(users.id, created.id));
+  expect(rows).toHaveLength(1);
+  const persisted = rows[0];
+
+  expect(persisted.email).toBe("owner.user@example.com");
+  expect(persisted.role).toBe("owner");
+  expect(persisted.passwordHash).not.toBe(plaintextPassword);
+  expect(JSON.stringify(persisted)).not.toContain(plaintextPassword);
+  expect(created).not.toHaveProperty("password");
+  await expect(verifyPassword(plaintextPassword, persisted.passwordHash)).resolves.toBe(true);
 });

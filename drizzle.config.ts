@@ -12,7 +12,7 @@ export default defineConfig({
   // public-interface rule. /lib/db never imports domain schemas at runtime,
   // and drizzle-kit connects with DATABASE_URL independently of the runtime
   // driver.
-  schema: "./domains/**/schema.ts",
+  schema: "./domains/*/internal/schema.ts",
   out: "./drizzle",
   dbCredentials: { url: databaseUrl },
 });

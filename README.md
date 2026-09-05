@@ -61,7 +61,7 @@ The production column provides future context; only the demo stack is in scope.
 | ORM & Data hookup | Drizzle                   | Fast, typesafe, & easy to scale                                      |
 | Auth              | Auth.js Credentials + JWT | Secure email/password sessions with role-aware identities            |
 | File Storage      | UploadThing               | Direct uploads behind a small, replaceable storage interface         |
-| Testing           | Jest + RTL, Drizzle Seed  | Test deep-module contracts, integration boundaries, & key user flows |
+| Testing           | Jest + RTL, Faker.js      | Test deep-module contracts, integration boundaries, & key user flows |
 | Logging           | LogTape                   | Structured logs across All 3 Next.js Environments                    |
 
 NOTE: I would choose [Effect.js](https://www.effect.website/) in production because it strengthens native TS by encoding errors & asynchronous tasks directly into the type system. I'm not using it here because it is TOO complex for a simplified restaurant review platform.
@@ -146,45 +146,53 @@ Prerequisites: Node 26 (`.nvmrc`), pnpm (pinned via `packageManager`), and any
 Docker-compatible runtime (Docker Desktop, Docker Engine, or OrbStack).
 
 ```bash
-cp .env.example .env   # then generate AUTH_SECRET: openssl rand -base64 32
+cp .env.example .env   # then set AUTH_SECRET (see below)
 pnpm install
 pnpm db:up             # start PostgreSQL (health-checked, named volume)
 pnpm db:push           # create the schema with drizzle-kit push (no migrations)
 pnpm db:seed           # upsert the two seeded development accounts (see below)
 ```
 
-The app must have `AUTH_SECRET` set (at least 32 characters) before it starts;
-it is validated fail-fast by `/lib/env/server` and never committed with a real
-value.
+The app and `pnpm test` both require a complete local environment: `DATABASE_DRIVER=postgres`,
+a `DATABASE_URL` whose hostname is `localhost` or `127.0.0.1`, and `AUTH_SECRET`
+(at least 32 characters). `.env.example` ships a clearly labeled local-only
+`AUTH_SECRET` placeholder that must **never** be used in production; generate a
+real secret with `openssl rand -base64 32`. Values are validated fail-fast by
+`/lib/env/server` (app) and shared Jest setup (tests). Tests use the same
+`DATABASE_URL` as local development against a running local PostgreSQL with the
+schema already applied (`pnpm db:push`).
 
 `role` is a required column with no default: on an existing populated
 database, `pnpm db:push` will fail or prompt interactively because there is
-no value for existing rows. This local database is disposable, so reset it
-instead: `pnpm db:reset`, then `pnpm db:up`, `pnpm db:push`, `pnpm db:seed`.
+no value for existing rows. This local database is disposable, so truncate it
+with `pnpm db:reset`, then `pnpm db:seed`.
 
 `db:seed` is idempotent: it upserts exactly one account per role
 (`REVIEWER_USER_EMAIL` / `REVIEWER_USER_PASSWORD` and `OWNER_USER_EMAIL` /
 `OWNER_USER_PASSWORD` from `.env`, non-secret example values; the two emails
 must be different addresses, checked after normalization) and restores
-each account's configured role and password on every run. Sign in at
-`/login` with either account's credentials.
+each account's configured role and password on every run without deleting
+unrelated rows. Sign in at `/login` with either account's credentials.
 
-The seed script runs as `tsx --conditions=react-server domains/users/seed.ts`
-on purpose: it imports the server-only modules under `/lib/env` and `/lib/db`,
-and the `server-only` package only resolves outside Next.js when Node loads it
-with the `react-server` export condition. Removing that flag makes the seed
-crash at import time.
+The seed and reset scripts run as
+`tsx --conditions=react-server scripts/{seed,reset}.ts` on purpose: they
+import the server-only modules under `/lib/env` and `/lib/db`, and the
+`server-only` package only resolves outside Next.js when Node loads it with
+the `react-server` export condition. Removing that flag makes them crash at
+import time.
 
 Everyday commands:
 
 - `pnpm dev` / `pnpm build` / `pnpm start` — Next.js dev, production build, serve
 - `pnpm lint` / `pnpm lint:fix` — ESLint (zero warnings enforced) with Prettier
 - `pnpm type-check` — TypeScript project check
-- `pnpm test` / `pnpm test:watch` — Jest with React Testing Library
+- `pnpm test` — all unit and integration tests serially (`--runInBand`); requires local Postgres
 - `pnpm db:seed` — upsert the two seeded development accounts (idempotent)
+- `pnpm db:reset` — truncate all application tables (`RESTART IDENTITY CASCADE`)
 - `pnpm db:studio` — Drizzle Studio (optional)
 - `pnpm db:down` — stop the PostgreSQL container (data persists in the `takehome-db-data` volume)
 
-`pnpm db:reset` is **destructive**: it stops the container and deletes the named
-volume, permanently removing all local data. Re-run `db:up` and `db:push`
-afterwards.
+`pnpm db:reset` is **destructive** to application data in `DATABASE_URL`: it
+truncates every application table and restarts identities. It does not remove
+the Docker volume; use `docker compose down --volumes` only when you intend to
+wipe the entire container data directory.
