@@ -2,7 +2,8 @@ import "dotenv/config";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 
-import { restaurantsFactory } from "@/domains/restaurants/server";
+import { restaurantsFactory, type RestaurantView } from "@/domains/restaurants/server";
+import { reviewsFactory } from "@/domains/reviews/server";
 import { usersFactory } from "@/domains/users/server";
 import { resetLocalAssets } from "@/lib/assets/server";
 import { normalizeEmail } from "@/lib/auth/credentials/server";
@@ -42,10 +43,18 @@ async function seedTestUsers() {
   const owner = await usersApi.fakeUser(ownerSeed);
   console.log("✅ → Seeded owner account.");
 
-  return { owner, reviewer };
+  // Extra reviewers enable multi-rating lists without violating the unique pair constraint.
+  const extraReviewers = [
+    await usersApi.fakeUser({ role: "reviewer", name: "Sam Critic" }),
+    await usersApi.fakeUser({ role: "reviewer", name: "Jordan Foodie" }),
+    await usersApi.fakeUser({ role: "reviewer", name: "Casey Diner" }),
+  ];
+  console.log("✅ → Seeded extra reviewers.");
+
+  return { owner, reviewer, extraReviewers };
 }
 
-async function seedRestaurants(ownerId: number) {
+async function seedRestaurants(ownerId: number): Promise<RestaurantView[]> {
   function startsWith(bytes: Uint8Array, signature: readonly number[]): boolean {
     return bytes.length >= signature.length && signature.every((value, index) => bytes[index] === value);
   }
@@ -70,11 +79,47 @@ async function seedRestaurants(ownerId: number) {
   }
 
   const restaurantsApi = restaurantsFactory(db, { seed: 42 });
+  const created: RestaurantView[] = [];
+
   for (const filename of SEED_IMAGE_FILES) {
-    console.log("⏳ Seeding restaurants with fixture image.");
     const image = await loadSeedImage(filename);
-    await restaurantsApi.fakeRestaurant({ ownerId, image });
-    console.log(`✅ → Seeded restaurant`);
+    created.push(await restaurantsApi.fakeRestaurant({ ownerId, image }));
+  }
+  return created;
+}
+
+/**
+ * Varied reviews across restaurants: multiple ratings, ordered lists, summaries,
+ * and an existing review for the primary seeded reviewer (edit/delete smoke path).
+ */
+async function seedReviews(restaurants: RestaurantView[], reviewerId: number, extraReviewerIds: number[]): Promise<void> {
+  if (restaurants.length < 3) throw new Error("Expected three seeded restaurants before seeding reviews.");
+  if (extraReviewerIds.length < 3) throw new Error("Expected three extra reviewers before seeding reviews.");
+
+  // Indexed after length guards; project tsconfig omits noUncheckedIndexedAccess.
+  const first = restaurants[0];
+  const second = restaurants[1];
+  const third = restaurants[2];
+  const samId = extraReviewerIds[0];
+  const jordanId = extraReviewerIds[1];
+  const caseyId = extraReviewerIds[2];
+
+  const reviewsApi = reviewsFactory(db, { seed: 42 });
+
+  const fixtures = [
+    // Restaurant 1: mixed ratings so average and best→worst order are obvious.
+    { restaurantId: first.id, reviewerId, rating: 5 as const, content: "Outstanding service and unforgettable flavors." },
+    { restaurantId: first.id, reviewerId: samId, rating: 3 as const, content: "Solid meal, nothing extraordinary." },
+    { restaurantId: first.id, reviewerId: jordanId, rating: 4 as const, content: "Would happily come back for the seasonal specials." },
+    // Restaurant 2: lower ratings + primary reviewer already reviewed.
+    { restaurantId: second.id, reviewerId, rating: 2 as const, content: "Slow kitchen and lukewarm plates." },
+    { restaurantId: second.id, reviewerId: caseyId, rating: 1 as const, content: "Skipped dessert after a disappointing main." },
+    // Restaurant 3: single glowing review for a sparse-summary case.
+    { restaurantId: third.id, reviewerId: samId, rating: 5 as const, content: "Perfect date-night spot with a great wine list." },
+  ];
+
+  for (const fixture of fixtures) {
+    await reviewsApi.fakeReview(fixture);
   }
 }
 
@@ -86,7 +131,6 @@ async function main(): Promise<void> {
   console.log("⏳ Resetting database.");
   const { tableCount } = await resetDatabase(db);
   console.log(`✅ → Truncated ${String(tableCount)} table${tableCount === 1 ? "" : "s"}.`);
-  console.log("\n");
 
   console.log("⏳ Resetting local assets.");
   await resetLocalAssets();
@@ -97,13 +141,23 @@ async function main(): Promise<void> {
   console.log("\n");
 
   console.log("⏳ Seeding test users.");
-  const { owner } = await seedTestUsers();
+  const { owner, reviewer, extraReviewers } = await seedTestUsers();
   console.log("✅ Seeded test users.");
   console.log("\n");
 
   console.log("⏳ Seeding restaurants.");
-  await seedRestaurants(owner.id);
+  const restaurants = await seedRestaurants(owner.id);
   console.log("✅ Seeded restaurants.");
+  console.log("\n");
+
+  console.log("⏳ Seeding reviews.");
+  await seedReviews(
+    restaurants,
+    reviewer.id,
+    extraReviewers.map((user) => user.id),
+  );
+  console.log("✅ Seeded reviews.");
+  console.log("\n");
 
   console.log("🎉 Seed Complete!");
 }
