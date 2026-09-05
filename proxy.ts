@@ -10,10 +10,10 @@ import { getSession } from "@/lib/auth/server";
  */
 
 /** Exact routes reachable without a session. */
-const PUBLIC_PATHS = new Set(["/", "/login", "/restaurants"]);
+const PUBLIC_PATHS = new Set(["/", "/login"]);
 
 /** Route prefixes (with their descendants) reachable without a session. */
-const PUBLIC_PREFIXES = ["/api/auth", "/api/assets"];
+const PUBLIC_PREFIXES = ["/api/auth", "/api/assets", "/restaurants"];
 
 function isPublic(pathname: string): boolean {
   return PUBLIC_PATHS.has(pathname) || PUBLIC_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
