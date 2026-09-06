@@ -22,6 +22,12 @@ export default function LoginPage() {
           Register
         </Link>
       </p>
+
+      <p className="text-sm text-muted-foreground">
+        <Link href="/" className="text-foreground underline underline-offset-4">
+          Continue as guest
+        </Link>
+      </p>
     </main>
   );
 }

@@ -29,16 +29,14 @@ export function EditRestaurantDialog({ restaurantId, defaults }: EditRestaurantD
           <DialogTitle>Edit restaurant</DialogTitle>
           <DialogDescription>Update fields or optionally replace the image.</DialogDescription>
         </DialogHeader>
-        {open && (
-          <RestaurantForm
-            mode="edit"
-            defaultValues={defaults}
-            restaurantId={restaurantId}
-            onSuccess={() => {
-              setOpen(false);
-            }}
-          />
-        )}
+        <RestaurantForm
+          mode="edit"
+          defaultValues={defaults}
+          restaurantId={restaurantId}
+          onSuccess={() => {
+            setOpen(false);
+          }}
+        />
       </DialogContent>
     </Dialog>
   );

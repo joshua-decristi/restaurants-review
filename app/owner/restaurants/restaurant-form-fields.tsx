@@ -24,7 +24,7 @@ function FieldError({ message }: { message?: string }) {
 /** Shared RHF fields for Create and Edit dialogs (nested address paths). */
 export function RestaurantFormFields({ register, errors, imageRequired, disabled }: RestaurantFormFieldsProps) {
   return (
-    <div className="max-h-[60vh] space-y-3 overflow-y-auto pr-1">
+    <div className="max-h-[60vh] space-y-3 overflow-y-auto p-1">
       <div className="space-y-1.5">
         <Label htmlFor="title">Title</Label>
         <Input id="title" aria-invalid={Boolean(errors.title)} disabled={disabled} {...register("title")} />

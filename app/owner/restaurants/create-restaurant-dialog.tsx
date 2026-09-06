@@ -22,15 +22,13 @@ export function CreateRestaurantDialog() {
           <DialogTitle>Create restaurant</DialogTitle>
           <DialogDescription>Add a restaurant you own. An image is required.</DialogDescription>
         </DialogHeader>
-        {open && (
-          <RestaurantForm
-            mode="create"
-            defaultValues={emptyRestaurantFormValues}
-            onSuccess={() => {
-              setOpen(false);
-            }}
-          />
-        )}
+        <RestaurantForm
+          mode="create"
+          defaultValues={emptyRestaurantFormValues}
+          onSuccess={() => {
+            setOpen(false);
+          }}
+        />
       </DialogContent>
     </Dialog>
   );
