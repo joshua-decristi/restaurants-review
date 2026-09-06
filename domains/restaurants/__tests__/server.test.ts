@@ -16,6 +16,7 @@ import {
   deleteRestaurant,
   getRestaurant,
   listRestaurants,
+  listRestaurantsByOwner,
   restaurants,
   restaurantsFactory,
   updateRestaurant,
@@ -174,6 +175,22 @@ describe("public reads", () => {
     const one = await getRestaurant(created.id);
     expect(one).toEqual(row);
     expect(await getRestaurant(9_999_999)).toBeNull();
+  });
+
+  it("lists only restaurants owned by the given owner", async () => {
+    const ownerA = await usersApi().fakeUser({ role: "owner" });
+    const ownerB = await usersApi().fakeUser({ role: "owner" });
+    const a = await restaurantsFactory(db).fakeRestaurant({ ownerId: ownerA.id, title: "A Spot" });
+    const b = await restaurantsFactory(db).fakeRestaurant({ ownerId: ownerB.id, title: "B Spot" });
+
+    const listedA = await listRestaurantsByOwner(ownerA.id);
+    const listedB = await listRestaurantsByOwner(ownerB.id);
+
+    expect(listedA.map((r) => r.id)).toEqual(expect.arrayContaining([a.id]));
+    expect(listedA.map((r) => r.id)).not.toEqual(expect.arrayContaining([b.id]));
+    expect(listedB.map((r) => r.id)).toEqual(expect.arrayContaining([b.id]));
+    expect(listedB.map((r) => r.id)).not.toEqual(expect.arrayContaining([a.id]));
+    expect(await listRestaurantsByOwner(0)).toEqual([]);
   });
 });
 

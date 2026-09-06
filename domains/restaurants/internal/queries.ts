@@ -64,6 +64,18 @@ export async function listRestaurants(): Promise<RestaurantView[]> {
     .then((rows) => rows.map(toRestaurantView));
 }
 
+/** Owner-scoped list; invalid ownerId returns []. */
+export async function listRestaurantsByOwner(ownerId: number): Promise<RestaurantView[]> {
+  if (!Number.isSafeInteger(ownerId) || ownerId <= 0) return [];
+
+  return await db
+    .select(restaurantSelect)
+    .from(restaurants)
+    .innerJoin(addresses, eq(restaurants.addressId, addresses.id))
+    .where(eq(restaurants.ownerId, ownerId))
+    .then((rows) => rows.map(toRestaurantView));
+}
+
 /** Public get-by-id; missing id returns null. */
 export async function getRestaurant(id: number): Promise<RestaurantView | null> {
   if (!Number.isSafeInteger(id) || id <= 0) return null;
