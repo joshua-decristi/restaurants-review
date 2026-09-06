@@ -95,7 +95,7 @@ export default async function RestaurantDetailPage({
           <div className="relative aspect-[16/9] w-full overflow-hidden bg-muted">
             {/* Asset URLs may be local disk routes or third-party hosts. */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={restaurant.imageUrl} alt="" className="h-full w-full object-cover" />
+            <img src={restaurant.imageUrl} alt={restaurant.title} className="h-full w-full object-cover" />
           </div>
           <CardHeader>
             <CardTitle className="text-2xl">{restaurant.title}</CardTitle>
