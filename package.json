@@ -13,7 +13,9 @@
     "db:up": "docker compose up --detach --wait",
     "db:down": "docker compose down",
     "db:reset": "tsx --conditions=react-server scripts/reset.ts",
-    "db:push": "drizzle-kit push",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:drop": "drizzle-kit drop",
     "db:seed": "tsx --conditions=react-server scripts/seed.ts",
     "db:studio": "drizzle-kit studio",
     "prepare": "husky"

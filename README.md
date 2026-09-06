@@ -148,7 +148,7 @@ Docker-compatible runtime (Docker Desktop, Docker Engine, or OrbStack).
 cp .env.example .env   # then set AUTH_SECRET (see below)
 pnpm install
 pnpm db:up             # start PostgreSQL (health-checked, named volume)
-pnpm db:push           # create the schema with drizzle-kit push (no migrations)
+pnpm db:migrate        # apply committed Drizzle migrations
 pnpm db:seed           # destructive reset-first demo seed (see below)
 ```
 
@@ -159,12 +159,7 @@ a `DATABASE_URL` whose hostname is `localhost` or `127.0.0.1`, and `AUTH_SECRET`
 real secret with `openssl rand -base64 32`. Values are validated fail-fast by
 `/lib/env/server` (app) and shared Jest setup (tests). Tests use the same
 `DATABASE_URL` as local development against a running local PostgreSQL with the
-schema already applied (`pnpm db:push`).
-
-`role` is a required column with no default: on an existing populated
-database, `pnpm db:push` will fail or prompt interactively because there is
-no value for existing rows. This local database is disposable, so truncate it
-with `pnpm db:reset`, then `pnpm db:seed`.
+schema already migrated (`pnpm db:migrate`).
 
 `db:seed` is idempotent: it upserts exactly one account per role
 (`REVIEWER_USER_EMAIL` / `REVIEWER_USER_PASSWORD` and `OWNER_USER_EMAIL` /
@@ -191,7 +186,18 @@ Everyday commands:
 - `pnpm db:studio` — Drizzle Studio (optional)
 - `pnpm db:down` — stop the PostgreSQL container (data persists in the `takehome-db-data` volume)
 
+```bash
+pnpm db:generate --name add-restaurant-hours # generate a named migration
+pnpm db:migrate                              # apply pending migrations
+pnpm db:drop                                 # drop latest unapplied, unshared migration
+```
+
+After schema edits: generate with a descriptive kebab-case `--name` (review convention),
+review the SQL under `drizzle/`, then migrate. `db:drop` removes only the latest
+unapplied, unshared migration from files/history—not a database rollback. Applied
+or shared migrations get a corrective forward migration instead.
+
 `pnpm db:reset` is **destructive** to application data in `DATABASE_URL`: it
 truncates every application table and restarts identities. It does not remove
 the Docker volume; use `docker compose down --volumes` only when you intend to
-wipe the entire container data directory.
+wipe the entire container data directory, then `pnpm db:up` and `pnpm db:migrate` again.
