@@ -65,6 +65,40 @@ export interface RestaurantView {
   address: RestaurantAddressView;
 }
 
+/** Public list sort; default best (highest average first). */
+export type RestaurantSort = "best" | "worst";
+
+/** Inclusive minimum average thresholds; omit/`any` means no threshold. */
+export type RestaurantMinRating = 3 | 4 | 5;
+
+export interface RestaurantListOptions {
+  cuisine?: string;
+  city?: string;
+  minRating?: RestaurantMinRating;
+  sort?: RestaurantSort;
+}
+
+/** Public browse row: restaurant view plus live rating aggregates. */
+export interface RestaurantListItem extends RestaurantView {
+  averageRating: number | null;
+  reviewCount: number;
+}
+
+export interface RestaurantFilterOptions {
+  cuisines: string[];
+  cities: string[];
+}
+
+/** Unsupported values default to best. */
+export function resolveRestaurantSort(sort: unknown): RestaurantSort {
+  return sort === "worst" ? "worst" : "best";
+}
+
+/** Unsupported thresholds are ignored (treated as no minimum). */
+export function resolveMinRating(minRating: unknown): RestaurantMinRating | undefined {
+  return minRating === 3 || minRating === 4 || minRating === 5 ? minRating : undefined;
+}
+
 const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 

@@ -15,12 +15,14 @@ import {
   type CreateRestaurantInput,
   deleteRestaurant,
   getRestaurant,
+  getRestaurantFilterOptions,
   listRestaurants,
   listRestaurantsByOwner,
   restaurants,
   restaurantsFactory,
   updateRestaurant,
 } from "@/domains/restaurants/server";
+import { createReview, reviewsFactory } from "@/domains/reviews/server";
 import { usersFactory } from "@/domains/users/server";
 import * as assets from "@/lib/assets/server";
 import { closeDatabase, db, resetDatabase } from "@/lib/db/server";
@@ -171,9 +173,18 @@ describe("public reads", () => {
     });
     expect(row).not.toHaveProperty("imageKey");
     expect(JSON.stringify(row)).not.toContain("imageKey");
+    expect(row.averageRating).toBeNull();
+    expect(row.reviewCount).toBe(0);
 
     const one = await getRestaurant(created.id);
-    expect(one).toEqual(row);
+    expect(one).toMatchObject({
+      id: row.id,
+      title: row.title,
+      imageUrl: row.imageUrl,
+      address: row.address,
+      ownerId: row.ownerId,
+    });
+    expect(one).not.toHaveProperty("averageRating");
     expect(await getRestaurant(9_999_999)).toBeNull();
   });
 
@@ -468,6 +479,231 @@ describe("validation matrix", () => {
       tinyPng,
     );
     expect(maxed.ok).toBe(true);
+  });
+});
+
+describe("public browse filters and aggregates", () => {
+  const place = (cuisine: string, city: string) => ({
+    cuisine,
+    city,
+    street: "9 Browse St",
+    stateRegion: "TX",
+    postalCode: "78701",
+    country: "US",
+  });
+
+  it("orders by best/worst with id DESC ties and unrated last", async () => {
+    const owner = await usersApi().fakeUser({ role: "owner" });
+    const rf = restaurantsFactory(db);
+    const cuisine = "BrowseOrderCuisine";
+    const city = "BrowseOrderCity";
+    const where = place(cuisine, city);
+
+    const highA = await rf.fakeRestaurant({ ownerId: owner.id, title: "High A", ...where });
+    const highB = await rf.fakeRestaurant({ ownerId: owner.id, title: "High B", ...where });
+    const mid = await rf.fakeRestaurant({ ownerId: owner.id, title: "Mid", ...where });
+    const unratedA = await rf.fakeRestaurant({ ownerId: owner.id, title: "Unrated A", ...where });
+    const unratedB = await rf.fakeRestaurant({ ownerId: owner.id, title: "Unrated B", ...where });
+
+    // Equal 5.0 averages on highA/highB; mid is 3.0; two unrated.
+    await reviewsFactory(db).fakeReview({ restaurantId: highA.id, rating: 5 });
+    await reviewsFactory(db).fakeReview({ restaurantId: highB.id, rating: 5 });
+    await reviewsFactory(db).fakeReview({ restaurantId: mid.id, rating: 3 });
+
+    const scope = (rows: { id: number }[]) => rows.filter((r) => [highA.id, highB.id, mid.id, unratedA.id, unratedB.id].includes(r.id)).map((r) => r.id);
+
+    const best = scope(await listRestaurants({ cuisine, city, sort: "best" }));
+    // Higher avg first; equal avgs → higher id first; unrated last (id DESC among unrated).
+    const highFirst = highA.id > highB.id ? [highA.id, highB.id] : [highB.id, highA.id];
+    const unratedLast = unratedA.id > unratedB.id ? [unratedA.id, unratedB.id] : [unratedB.id, unratedA.id];
+    expect(best).toEqual([...highFirst, mid.id, ...unratedLast]);
+
+    const worst = scope(await listRestaurants({ cuisine, city, sort: "worst" }));
+    expect(worst).toEqual([mid.id, ...highFirst, ...unratedLast]);
+  });
+
+  it("returns numeric aggregates for rated restaurants and null/0 for unrated", async () => {
+    const owner = await usersApi().fakeUser({ role: "owner" });
+    const cuisine = "BrowseAggCuisine";
+    const city = "BrowseAggCity";
+    const where = place(cuisine, city);
+    const rated = await restaurantsFactory(db).fakeRestaurant({ ownerId: owner.id, title: "Rated", ...where });
+    const unrated = await restaurantsFactory(db).fakeRestaurant({ ownerId: owner.id, title: "Unrated", ...where });
+
+    await reviewsFactory(db).fakeReview({ restaurantId: rated.id, rating: 4 });
+    await reviewsFactory(db).fakeReview({ restaurantId: rated.id, rating: 5 });
+
+    const rows = await listRestaurants({ cuisine, city });
+    const ratedRow = rows.find((r) => r.id === rated.id);
+    const unratedRow = rows.find((r) => r.id === unrated.id);
+
+    expect(ratedRow).toMatchObject({ averageRating: 4.5, reviewCount: 2 });
+    expect(typeof ratedRow?.averageRating).toBe("number");
+    expect(unratedRow).toMatchObject({ averageRating: null, reviewCount: 0 });
+  });
+
+  it("filters by inclusive minRating and excludes unrated on numeric thresholds", async () => {
+    const owner = await usersApi().fakeUser({ role: "owner" });
+    const cuisine = "BrowseMinCuisine";
+    const city = "BrowseMinCity";
+    const rf = restaurantsFactory(db);
+    const where = place(cuisine, city);
+
+    const five = await rf.fakeRestaurant({ ownerId: owner.id, title: "Five", ...where });
+    const four = await rf.fakeRestaurant({ ownerId: owner.id, title: "Four", ...where });
+    const three = await rf.fakeRestaurant({ ownerId: owner.id, title: "Three", ...where });
+    // Unrounded 3.5 sits below 4+.
+    const threeFive = await rf.fakeRestaurant({ ownerId: owner.id, title: "ThreeFive", ...where });
+    const unrated = await rf.fakeRestaurant({ ownerId: owner.id, title: "None", ...where });
+
+    await reviewsFactory(db).fakeReview({ restaurantId: five.id, rating: 5 });
+    await reviewsFactory(db).fakeReview({ restaurantId: four.id, rating: 4 });
+    await reviewsFactory(db).fakeReview({ restaurantId: three.id, rating: 3 });
+    await reviewsFactory(db).fakeReview({ restaurantId: threeFive.id, rating: 3 });
+    await reviewsFactory(db).fakeReview({ restaurantId: threeFive.id, rating: 4 });
+
+    const ids = async (minRating?: 3 | 4 | 5) => (await listRestaurants({ cuisine, city, minRating })).map((r) => r.id).sort((a, b) => a - b);
+
+    const all = [five.id, four.id, three.id, threeFive.id, unrated.id].sort((a, b) => a - b);
+    expect(await ids(undefined)).toEqual(all);
+
+    expect(await ids(3)).toEqual([five.id, four.id, three.id, threeFive.id].sort((a, b) => a - b));
+    expect(await ids(4)).toEqual([five.id, four.id].sort((a, b) => a - b));
+    expect(await ids(5)).toEqual([five.id]);
+  });
+
+  it("matches cuisine and city with trimmed case-insensitive exact equality (AND)", async () => {
+    const owner = await usersApi().fakeUser({ role: "owner" });
+    const rf = restaurantsFactory(db);
+
+    const target = await rf.fakeRestaurant({
+      ownerId: owner.id,
+      title: "Target",
+      ...place("BrowseExactThai", "BrowseExactAustin"),
+    });
+    await rf.fakeRestaurant({
+      ownerId: owner.id,
+      title: "Other cuisine",
+      ...place("BrowseExactMex", "BrowseExactAustin"),
+    });
+    await rf.fakeRestaurant({
+      ownerId: owner.id,
+      title: "Other city",
+      ...place("BrowseExactThai", "BrowseExactDallas"),
+    });
+
+    const matched = await listRestaurants({ cuisine: "  browseexactthai  ", city: "  BROWSEEXACTAUSTIN " });
+    expect(matched.map((r) => r.id)).toEqual([target.id]);
+
+    expect(await listRestaurants({ cuisine: "BrowseExactThai", city: "NoSuchCity" })).toEqual([]);
+    expect(await listRestaurants({ cuisine: "NoSuchCuisine" })).toEqual([]);
+  });
+
+  it("combines cuisine, city, minRating, and worst-first sorting", async () => {
+    const owner = await usersApi().fakeUser({ role: "owner" });
+    const cuisine = "BrowseComboCuisine";
+    const city = "BrowseComboCity";
+    const rf = restaurantsFactory(db);
+    const where = place(cuisine, city);
+
+    const a = await rf.fakeRestaurant({ ownerId: owner.id, title: "A", ...where });
+    const b = await rf.fakeRestaurant({ ownerId: owner.id, title: "B", ...where });
+    const c = await rf.fakeRestaurant({ ownerId: owner.id, title: "C", ...where });
+    // Outside filters.
+    await rf.fakeRestaurant({ ownerId: owner.id, title: "Out", ...place("BrowseComboOther", city) });
+
+    await reviewsFactory(db).fakeReview({ restaurantId: a.id, rating: 5 });
+    await reviewsFactory(db).fakeReview({ restaurantId: b.id, rating: 4 });
+    await reviewsFactory(db).fakeReview({ restaurantId: c.id, rating: 3 });
+
+    const rows = await listRestaurants({ cuisine, city, minRating: 4, sort: "worst" });
+    expect(rows.map((r) => r.id)).toEqual([b.id, a.id]);
+  });
+
+  it("returns deduplicated alphabetically ordered filter options", async () => {
+    const owner = await usersApi().fakeUser({ role: "owner" });
+    const rf = restaurantsFactory(db);
+
+    await rf.fakeRestaurant({
+      ownerId: owner.id,
+      cuisine: "  BrowseFilterZebra  ",
+      city: "  BrowseFilterZed  ",
+    });
+    await rf.fakeRestaurant({
+      ownerId: owner.id,
+      cuisine: "browsefilterzebra",
+      city: "browsefilterzed",
+    });
+    await rf.fakeRestaurant({
+      ownerId: owner.id,
+      cuisine: "BrowseFilterAlpha",
+      city: "BrowseFilterAble",
+    });
+
+    const options = await getRestaurantFilterOptions();
+
+    const cuisines = options.cuisines.filter((c) => c.toLowerCase().includes("browsefilter"));
+    const cities = options.cities.filter((c) => c.toLowerCase().includes("browsefilter"));
+
+    expect(cuisines).toHaveLength(2);
+    expect(cuisines.map((c) => c.toLowerCase()).sort()).toEqual(["browsefilteralpha", "browsefilterzebra"]);
+    expect(cuisines).toEqual([...cuisines].sort((a, b) => a.localeCompare(b)));
+
+    expect(cities).toHaveLength(2);
+    expect(cities.map((c) => c.toLowerCase()).sort()).toEqual(["browsefilterable", "browsefilterzed"]);
+    expect(cities).toEqual([...cities].sort((a, b) => a.localeCompare(b)));
+  });
+
+  it("defaults unsupported sort and minRating values safely", async () => {
+    const owner = await usersApi().fakeUser({ role: "owner" });
+    const cuisine = "BrowseInvalidCuisine";
+    const city = "BrowseInvalidCity";
+    const where = place(cuisine, city);
+    const high = await restaurantsFactory(db).fakeRestaurant({ ownerId: owner.id, title: "High", ...where });
+    const low = await restaurantsFactory(db).fakeRestaurant({ ownerId: owner.id, title: "Low", ...where });
+    const unrated = await restaurantsFactory(db).fakeRestaurant({ ownerId: owner.id, title: "Unrated", ...where });
+
+    await reviewsFactory(db).fakeReview({ restaurantId: high.id, rating: 5 });
+    await reviewsFactory(db).fakeReview({ restaurantId: low.id, rating: 2 });
+
+    const bogus = await listRestaurants({
+      cuisine,
+      city,
+      // @ts-expect-error intentional invalid runtime values
+      sort: "nope",
+      // @ts-expect-error intentional invalid runtime values
+      minRating: 2,
+    });
+
+    // Invalid minRating ignored (unrated included); invalid sort → best.
+    expect(bogus.map((r) => r.id)).toEqual(
+      [high.id, low.id, unrated.id].sort((a, b) => {
+        // best order: high (5), low (2), unrated
+        const rank = (id: number) => (id === high.id ? 0 : id === low.id ? 1 : 2);
+        return rank(a) - rank(b);
+      }),
+    );
+  });
+
+  it("refreshes list aggregates after a review mutation", async () => {
+    const owner = await usersApi().fakeUser({ role: "owner" });
+    const reviewer = await usersApi().fakeUser({ role: "reviewer" });
+    const cuisine = "BrowseRefreshCuisine";
+    const city = "BrowseRefreshCity";
+    const restaurant = await restaurantsFactory(db).fakeRestaurant({
+      ownerId: owner.id,
+      title: "Refresh",
+      ...place(cuisine, city),
+    });
+
+    const before = (await listRestaurants({ cuisine, city })).find((r) => r.id === restaurant.id);
+    expect(before).toMatchObject({ averageRating: null, reviewCount: 0 });
+
+    const created = await createReview(reviewer.id, restaurant.id, { rating: 4, content: "Solid meal." });
+    expect(created.ok).toBe(true);
+
+    const after = (await listRestaurants({ cuisine, city })).find((r) => r.id === restaurant.id);
+    expect(after).toMatchObject({ averageRating: 4, reviewCount: 1 });
   });
 });
 
