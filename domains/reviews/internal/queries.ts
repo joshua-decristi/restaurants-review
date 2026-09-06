@@ -1,12 +1,12 @@
 import "server-only";
 
-import { avg, count, desc, eq } from "drizzle-orm";
+import { asc, avg, count, desc, eq } from "drizzle-orm";
 
 import { users } from "@/domains/users/server";
 import { db } from "@/lib/db/server";
 
 import { reviews } from "./schema";
-import type { RatingSummary, ReviewRating, ReviewView } from "./validation";
+import { type RatingSummary, resolveReviewSort, type ReviewRating, type ReviewSort, type ReviewView } from "./validation";
 
 const reviewSelect = {
   id: reviews.id,
@@ -48,18 +48,20 @@ function isPositiveId(id: number): boolean {
 }
 
 /**
- * Public list for a restaurant. Ordered rating DESC, createdAt DESC, id DESC.
- * Missing restaurant → ordinary empty list (detail page owns 404).
+ * Public list for a restaurant. Rating direction from sort (default highest);
+ * always createdAt DESC, id DESC tie-breakers. Missing restaurant → empty list.
  */
-export async function listReviews(restaurantId: number): Promise<ReviewView[]> {
+export async function listReviews(restaurantId: number, sort?: ReviewSort): Promise<ReviewView[]> {
   if (!isPositiveId(restaurantId)) return [];
+
+  const ratingOrder = resolveReviewSort(sort) === "lowest" ? asc(reviews.rating) : desc(reviews.rating);
 
   return await db
     .select(reviewSelect)
     .from(reviews)
     .innerJoin(users, eq(reviews.reviewerId, users.id))
     .where(eq(reviews.restaurantId, restaurantId))
-    .orderBy(desc(reviews.rating), desc(reviews.createdAt), desc(reviews.id))
+    .orderBy(ratingOrder, desc(reviews.createdAt), desc(reviews.id))
     .then((rows) => rows.map(toReviewView));
 }
 

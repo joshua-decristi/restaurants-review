@@ -89,13 +89,13 @@ describe("public reads", () => {
     expect(JSON.stringify(row)).not.toContain("password");
   });
 
-  it("orders by rating DESC, then createdAt DESC, then id DESC", async () => {
+  it("orders highest-first by default; lowest reverses rating; ties stay createdAt/id DESC", async () => {
     const restaurant = await restaurantsApi().fakeRestaurant();
     const t1 = new Date("2024-01-01T12:00:00.000Z");
     const t2 = new Date("2024-01-02T12:00:00.000Z");
     const t3 = new Date("2024-01-03T12:00:00.000Z");
 
-    // Lower rating first insert (should sort last).
+    // Lower rating first insert (should sort last when highest-first).
     const low = await reviewsApi().fakeReview({
       restaurantId: restaurant.id,
       rating: 2,
@@ -138,9 +138,14 @@ describe("public reads", () => {
       createdAt: t1,
     });
 
-    const listed = await listReviews(restaurant.id);
-    const ids = listed.map((r) => r.id);
-    expect(ids).toEqual([newerHigh.id, olderHigh.id, tieB.id, tieA.id, mid.id, low.id]);
+    const highestOrder = [newerHigh.id, olderHigh.id, tieB.id, tieA.id, mid.id, low.id];
+    const lowestOrder = [low.id, mid.id, tieB.id, tieA.id, newerHigh.id, olderHigh.id];
+
+    expect((await listReviews(restaurant.id)).map((r) => r.id)).toEqual(highestOrder);
+    expect((await listReviews(restaurant.id, "highest")).map((r) => r.id)).toEqual(highestOrder);
+    expect((await listReviews(restaurant.id, "lowest")).map((r) => r.id)).toEqual(lowestOrder);
+    // Unsupported sort defensively defaults to highest.
+    expect((await listReviews(restaurant.id, "nope" as "highest")).map((r) => r.id)).toEqual(highestOrder);
   });
 
   it("returns [] and empty summary for a missing restaurant", async () => {

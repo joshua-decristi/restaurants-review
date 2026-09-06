@@ -13,6 +13,7 @@ export type {
   ReviewError,
   ReviewRating,
   ReviewResult,
+  ReviewSort,
   ReviewView,
   UpdateReviewInput,
 } from "./internal/validation";

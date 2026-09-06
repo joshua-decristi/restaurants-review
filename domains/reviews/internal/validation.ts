@@ -12,6 +12,9 @@ export type ReviewResult<T> = { ok: true; data: T } | { ok: false; error: Review
 
 export type ReviewRating = 1 | 2 | 3 | 4 | 5;
 
+/** Detail-page review list direction; default highest. */
+export type ReviewSort = "highest" | "lowest";
+
 const ratingSchema = z.number().int().min(1).max(5) as z.ZodType<ReviewRating>;
 const contentSchema = z.string().trim().min(1).max(2000);
 
@@ -45,6 +48,11 @@ export interface ReviewView {
 export interface RatingSummary {
   averageRating: number | null;
   reviewCount: number;
+}
+
+/** Unsupported values default to highest. */
+export function resolveReviewSort(sort: unknown): ReviewSort {
+  return sort === "lowest" ? "lowest" : "highest";
 }
 
 /** Maps Zod issues to stable form field paths. */
