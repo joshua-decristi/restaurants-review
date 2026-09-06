@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 
+import { logoutAction } from "@/app/login/login-action";
 import { RestaurantCard } from "@/components/restaurants";
 import { Button } from "@/components/ui/button";
 import { listRestaurantsByOwner } from "@/domains/restaurants/server";
@@ -8,7 +9,6 @@ import { getSession } from "@/lib/auth/server";
 import { CreateRestaurantDialog } from "./create-restaurant-dialog";
 import { DeleteRestaurantDialog } from "./delete-restaurant-dialog";
 import { EditRestaurantDialog } from "./edit-restaurant-dialog";
-import { logoutAction } from "./logout-action";
 
 /** Owner home: session-scoped restaurant list with Create / Edit / Delete and Log out. */
 export default async function OwnerRestaurantsPage() {

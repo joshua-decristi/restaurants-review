@@ -1,6 +1,6 @@
 "use server";
 
-import { login } from "@/lib/auth/server";
+import { login, logout } from "@/lib/auth/server";
 
 export interface LoginActionState {
   error: string | null;
@@ -24,4 +24,9 @@ export async function loginAction(_state: LoginActionState, formData: FormData):
 
   if (!result.ok) return { error: "Invalid email or password." };
   return { error: null };
+}
+
+/** Clears the session and sends the owner home (`/login` → public list when logged out). */
+export async function logoutAction(): Promise<void> {
+  await logout("/login");
 }

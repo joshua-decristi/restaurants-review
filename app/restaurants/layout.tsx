@@ -1,12 +1,8 @@
 import Link from "next/link";
 
+import { logoutAction } from "@/app/login/login-action";
 import { Button } from "@/components/ui/button";
-import { getSession, logout } from "@/lib/auth/server";
-
-async function logoutAction() {
-  "use server";
-  await logout("/login");
-}
+import { getSession } from "@/lib/auth/server";
 
 /** Restaurant-scoped chrome: role-aware nav + logout; pages supply the body. */
 export default async function RestaurantsLayout({ children }: { children: React.ReactNode }) {
