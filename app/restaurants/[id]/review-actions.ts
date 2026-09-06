@@ -68,8 +68,9 @@ function mapFailure(error: string, issues?: FieldIssue[]): ReviewActionState {
   };
 }
 
-function revalidateRestaurantDetail(restaurantId: number): void {
+function revalidateRestaurantPaths(restaurantId: number): void {
   revalidatePath(`/restaurants/${String(restaurantId)}`);
+  revalidatePath("/restaurants");
 }
 
 /**
@@ -91,7 +92,7 @@ export async function createReviewAction(_state: ReviewActionState, formData: Fo
 
   if (!result.ok) return mapFailure(result.error, result.issues);
 
-  revalidateRestaurantDetail(restaurantId);
+  revalidateRestaurantPaths(restaurantId);
   return { ok: true, error: null, fieldErrors: {} };
 }
 
@@ -125,13 +126,13 @@ export async function updateReviewAction(_state: ReviewActionState, formData: Fo
   if (!result.ok) return mapFailure(result.error, result.issues);
 
   // Prefer the form restaurantId for path refresh; fall back to the returned view.
-  revalidateRestaurantDetail(restaurantId ?? result.data.restaurantId);
+  revalidateRestaurantPaths(restaurantId ?? result.data.restaurantId);
   return { ok: true, error: null, fieldErrors: {} };
 }
 
 /**
  * Delete adapter: authenticates, derives review id from the form, and refreshes
- * the restaurant detail path after a successful hard delete.
+ * detail + list paths after a successful hard delete.
  */
 export async function deleteReviewAction(_state: ReviewActionState, formData: FormData): Promise<ReviewActionState> {
   const auth = await authenticate();
@@ -144,7 +145,7 @@ export async function deleteReviewAction(_state: ReviewActionState, formData: Fo
   const result = await deleteReview(auth.userId, reviewId);
 
   if (!result.ok) return mapFailure(result.error, result.issues);
-  if (restaurantId !== null) revalidateRestaurantDetail(restaurantId);
+  if (restaurantId !== null) revalidateRestaurantPaths(restaurantId);
 
   return { ok: true, error: null, fieldErrors: {} };
 }
