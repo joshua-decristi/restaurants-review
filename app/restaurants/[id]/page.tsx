@@ -4,12 +4,18 @@ import { notFound } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { getRestaurant, type RestaurantView } from "@/domains/restaurants/server";
-import { getRatingSummary, listReviews, type ReviewView } from "@/domains/reviews/server";
+import { getRatingSummary, listReviews, type ReviewSort, type ReviewView } from "@/domains/reviews/server";
 import { getSession } from "@/lib/auth/server";
 
 import { CreateReviewDialog } from "./create-review-dialog";
 import { DeleteReviewButton } from "./delete-review-button";
 import { EditReviewDialog } from "./edit-review-dialog";
+import { ReviewSortControl } from "./review-sort-control";
+
+function parseReviewSort(value: string | string[] | undefined): ReviewSort {
+  const raw = typeof value === "string" ? value : undefined;
+  return raw === "lowest" ? "lowest" : "highest";
+}
 
 function formatAddress(address: RestaurantView["address"]): string {
   return `${address.street}, ${address.city}, ${address.stateRegion} ${address.postalCode}, ${address.country}`;
@@ -53,7 +59,13 @@ function ReviewCard({ review, isAuthor }: { review: ReviewView; isAuthor: boolea
 }
 
 /** Public restaurant detail with inline reviews and basic reviewer controls. */
-export default async function RestaurantDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function RestaurantDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ reviewSort?: string | string[] }>;
+}) {
   const { id: rawId } = await params;
   const restaurantId = Number(rawId);
   if (!Number.isSafeInteger(restaurantId) || restaurantId <= 0) notFound();
@@ -62,7 +74,10 @@ export default async function RestaurantDetailPage({ params }: { params: Promise
   const restaurant = await getRestaurant(restaurantId);
   if (!restaurant) notFound();
 
-  const [session, reviews, summary] = await Promise.all([getSession(), listReviews(restaurantId), getRatingSummary(restaurantId)]);
+  const query = await searchParams;
+  const reviewSort = parseReviewSort(query.reviewSort);
+
+  const [session, reviews, summary] = await Promise.all([getSession(), listReviews(restaurantId, reviewSort), getRatingSummary(restaurantId)]);
 
   const sessionUserId = session ? Number(session.user.id) : NaN;
   const isReviewer = session?.user.role === "reviewer" && Number.isSafeInteger(sessionUserId);
@@ -73,7 +88,7 @@ export default async function RestaurantDetailPage({ params }: { params: Promise
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-8 px-6 py-12">
       <div>
         <Button asChild variant="ghost" size="sm" className="mb-4 -ml-2">
-          <Link href="/restaurants">← All restaurants</Link>
+          <Link href="/restaurants">{session?.user.role === "owner" ? "← My restaurants" : "← All restaurants"}</Link>
         </Button>
 
         <Card>
@@ -106,16 +121,19 @@ export default async function RestaurantDetailPage({ params }: { params: Promise
         <header className="flex flex-wrap items-end justify-between gap-3">
           <div className="space-y-1">
             <h2 className="text-lg font-semibold tracking-tight">Reviews</h2>
-            <p className="text-sm text-muted-foreground">Ordered best to worst.</p>
+            <p className="text-sm text-muted-foreground">{reviewSort === "lowest" ? "Ordered lowest to highest." : "Ordered highest to lowest."}</p>
           </div>
 
-          {!session ? (
-            <Button asChild variant="outline" size="sm">
-              <Link href="/login">Sign in to review</Link>
-            </Button>
-          ) : null}
-          {isReviewer && !ownReview ? <CreateReviewDialog restaurantId={restaurantId} /> : null}
-          {isReviewer && ownReview ? <p className="text-sm text-muted-foreground">You reviewed this restaurant. Edit or delete below.</p> : null}
+          <div className="flex flex-wrap items-center gap-3">
+            <ReviewSortControl reviewSort={reviewSort} />
+            {!session ? (
+              <Button asChild variant="outline" size="sm">
+                <Link href="/login">Sign in to review</Link>
+              </Button>
+            ) : null}
+            {isReviewer && !ownReview ? <CreateReviewDialog restaurantId={restaurantId} /> : null}
+            {isReviewer && ownReview ? <p className="text-sm text-muted-foreground">You reviewed this restaurant. Edit or delete below.</p> : null}
+          </div>
         </header>
 
         {reviews.length === 0 ? (
