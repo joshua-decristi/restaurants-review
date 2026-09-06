@@ -7,10 +7,10 @@
 
 import { revalidatePath } from "next/cache";
 
-import { createRestaurant, updateRestaurant } from "@/domains/restaurants/server";
+import { createRestaurant, deleteRestaurant, updateRestaurant } from "@/domains/restaurants/server";
 import { getSession } from "@/lib/auth/server";
 
-import { createRestaurantAction, type RestaurantActionState, updateRestaurantAction } from "../restaurant-actions";
+import { createRestaurantAction, deleteRestaurantAction, type RestaurantActionState, updateRestaurantAction } from "../restaurant-actions";
 
 /** Mirror of the actions module seed (kept private there; "use server" cannot export values). */
 const initialRestaurantActionState: RestaurantActionState = {
@@ -26,6 +26,7 @@ jest.mock("@/lib/auth/server", () => ({
 jest.mock("@/domains/restaurants/server", () => ({
   createRestaurant: jest.fn(),
   updateRestaurant: jest.fn(),
+  deleteRestaurant: jest.fn(),
 }));
 
 jest.mock("next/cache", () => ({
@@ -35,6 +36,7 @@ jest.mock("next/cache", () => ({
 const getSessionMock = jest.mocked(getSession);
 const createRestaurantMock = jest.mocked(createRestaurant);
 const updateRestaurantMock = jest.mocked(updateRestaurant);
+const deleteRestaurantMock = jest.mocked(deleteRestaurant);
 const revalidatePathMock = jest.mocked(revalidatePath);
 
 function multipart(fields: Record<string, string>, file?: File): FormData {
@@ -44,6 +46,11 @@ function multipart(fields: Record<string, string>, file?: File): FormData {
   }
   if (file) formData.set("image", file);
   return formData;
+}
+
+function expectDualRevalidate(): void {
+  expect(revalidatePathMock).toHaveBeenCalledWith("/owner/restaurants");
+  expect(revalidatePathMock).toHaveBeenCalledWith("/restaurants");
 }
 
 const tinyPng = new File([Uint8Array.of(137, 80, 78, 71)], "shot.png", { type: "image/png" });
@@ -113,7 +120,7 @@ describe("createRestaurantAction", () => {
     expect(userId).toBe(42);
     expect(input).toEqual(validParsedInput);
     expect(image).toBeInstanceOf(File);
-    expect(revalidatePathMock).toHaveBeenCalledWith("/restaurants");
+    expectDualRevalidate();
   });
 
   it("maps domain not-owner failures to stable form state", async () => {
@@ -183,7 +190,7 @@ describe("updateRestaurantAction", () => {
       },
       undefined,
     );
-    expect(revalidatePathMock).toHaveBeenCalledWith("/restaurants");
+    expectDualRevalidate();
   });
 
   it("forwards supplied blank fields as empty strings so domain can validate them", async () => {
@@ -253,5 +260,54 @@ describe("updateRestaurantAction", () => {
 
     expect(state.error).toBe("Restaurant not found.");
     expect(updateRestaurantMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("deleteRestaurantAction", () => {
+  it("returns unauthorized without a session and does not call the domain", async () => {
+    getSessionMock.mockResolvedValue(null);
+
+    const state = await deleteRestaurantAction(initialRestaurantActionState, multipart({ id: "1" }));
+
+    expect(state).toEqual({
+      ok: false,
+      error: "You must be signed in to manage restaurants.",
+      fieldErrors: {},
+    });
+    expect(deleteRestaurantMock).not.toHaveBeenCalled();
+  });
+
+  it("passes session userId and id, then dual-revalidates on success", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "42", email: "owner@example.com", role: "owner" } });
+    deleteRestaurantMock.mockResolvedValue({ ok: true, data: null });
+
+    const state = await deleteRestaurantAction(initialRestaurantActionState, multipart({ id: "9", ownerId: "999" }));
+
+    expect(state).toEqual({ ok: true, error: null, fieldErrors: {} });
+    expect(deleteRestaurantMock).toHaveBeenCalledWith(42, 9);
+    expectDualRevalidate();
+  });
+
+  it("maps domain not-found failures to stable form state", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "42", email: "owner@example.com", role: "owner" } });
+    deleteRestaurantMock.mockResolvedValue({ ok: false, error: "not-found" });
+
+    const state = await deleteRestaurantAction(initialRestaurantActionState, multipart({ id: "1" }));
+
+    expect(state).toEqual({
+      ok: false,
+      error: "Restaurant not found.",
+      fieldErrors: {},
+    });
+    expect(revalidatePathMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects a non-numeric restaurant id without calling the domain", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "42", email: "owner@example.com", role: "owner" } });
+
+    const state = await deleteRestaurantAction(initialRestaurantActionState, multipart({ id: "abc" }));
+
+    expect(state.error).toBe("Restaurant not found.");
+    expect(deleteRestaurantMock).not.toHaveBeenCalled();
   });
 });

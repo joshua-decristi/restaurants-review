@@ -2,10 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 
-import { createRestaurant, type FieldIssue, updateRestaurant } from "@/domains/restaurants/server";
+import { createRestaurant, deleteRestaurant, type FieldIssue, updateRestaurant } from "@/domains/restaurants/server";
 import { getSession } from "@/lib/auth/server";
 
-/** Stable form-state contract for Create/Edit dialogs. */
+/** Stable form-state contract for Create/Edit/Delete dialogs. */
 export interface RestaurantActionState {
   ok: boolean;
   error: string | null;
@@ -54,9 +54,7 @@ async function authenticate(): Promise<{ ok: true; userId: number } | { ok: fals
   // Session is authoritative; never trust owner IDs from form fields.
   const session = await getSession();
   const userId = Number(session?.user.id);
-  if (!session || !Number.isSafeInteger(userId)) {
-    return { ok: false, state: { ok: false, error: ERROR_MESSAGES.unauthorized, fieldErrors: {} } };
-  }
+  if (!session || !Number.isSafeInteger(userId)) return { ok: false, state: { ok: false, error: ERROR_MESSAGES.unauthorized, fieldErrors: {} } };
   return { ok: true, userId };
 }
 
@@ -69,9 +67,7 @@ function mapIssues(issues: FieldIssue[] | undefined): Record<string, string> {
   const fieldErrors: Record<string, string> = {};
   for (const issue of issues ?? []) {
     const path = toFormPath(issue.path);
-    if (!Object.hasOwn(fieldErrors, path)) {
-      fieldErrors[path] = issue.message;
-    }
+    if (!Object.hasOwn(fieldErrors, path)) fieldErrors[path] = issue.message;
   }
   return fieldErrors;
 }
@@ -82,6 +78,11 @@ function mapFailure(error: string, issues?: FieldIssue[]): RestaurantActionState
     error: ERROR_MESSAGES[error] ?? "Something went wrong. Please try again.",
     fieldErrors: mapIssues(issues),
   };
+}
+
+function revalidateRestaurantLists(): void {
+  revalidatePath("/owner/restaurants");
+  revalidatePath("/restaurants");
 }
 
 /**
@@ -95,16 +96,13 @@ export async function createRestaurantAction(_state: RestaurantActionState, form
   // Domain validates image contents; transport only ensures a File is present
   // because createRestaurant's public signature requires one.
   const image = formFile(formData, "image");
-  if (!image) {
-    return mapFailure("validation", [{ path: "image", message: "An image is required." }]);
-  }
+  if (!image) return mapFailure("validation", [{ path: "image", message: "An image is required." }]);
 
   // Intentionally ignore any client-supplied ownerId / userId fields.
   const result = await createRestaurant(auth.userId, parseRestaurantFields(formData), image);
-
   if (!result.ok) return mapFailure(result.error, result.issues);
 
-  revalidatePath("/restaurants");
+  revalidateRestaurantLists();
   return { ok: true, error: null, fieldErrors: {} };
 }
 
@@ -118,14 +116,27 @@ export async function updateRestaurantAction(_state: RestaurantActionState, form
   if (!auth.ok) return auth.state;
 
   const id = Number(formString(formData, "id"));
-  if (!Number.isSafeInteger(id) || id <= 0) {
-    return { ok: false, error: ERROR_MESSAGES["not-found"], fieldErrors: {} };
-  }
+  if (!Number.isSafeInteger(id) || id <= 0) return { ok: false, error: ERROR_MESSAGES["not-found"], fieldErrors: {} };
 
   const result = await updateRestaurant(auth.userId, id, parseRestaurantFields(formData), formFile(formData, "image"));
 
   if (!result.ok) return mapFailure(result.error, result.issues);
 
-  revalidatePath("/restaurants");
+  revalidateRestaurantLists();
+  return { ok: true, error: null, fieldErrors: {} };
+}
+
+/** Delete adapter: session owner only; id from form; dual list revalidation. */
+export async function deleteRestaurantAction(_state: RestaurantActionState, formData: FormData): Promise<RestaurantActionState> {
+  const auth = await authenticate();
+  if (!auth.ok) return auth.state;
+
+  const id = Number(formString(formData, "id"));
+  if (!Number.isSafeInteger(id) || id <= 0) return { ok: false, error: ERROR_MESSAGES["not-found"], fieldErrors: {} };
+
+  const result = await deleteRestaurant(auth.userId, id);
+  if (!result.ok) return mapFailure(result.error);
+
+  revalidateRestaurantLists();
   return { ok: true, error: null, fieldErrors: {} };
 }
