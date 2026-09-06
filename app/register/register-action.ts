@@ -35,7 +35,7 @@ export async function registerAction(_state: RegisterActionState, formData: Form
     return { ok: false, error: null, fieldErrors: result.fieldErrors };
   }
 
-  // Success path exits via Auth.js redirect to POST_SIGNIN_URL ("/post-login").
+  // Success path exits via Auth.js redirect to POST_SIGNIN_URL ("/").
   const signIn = await login.credentials({ email: result.user.email, password });
   if (!signIn.ok) {
     return { ok: false, error: "Account created but sign-in failed. Please log in.", fieldErrors: {} };

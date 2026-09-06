@@ -15,6 +15,8 @@ export interface AuthUser {
   id: string;
   email: string;
   role: Role;
+  /** Display name from sign-in; absent when the JWT has no name claim. */
+  name?: string;
 }
 
 /**
@@ -31,7 +33,7 @@ function rejectLogin(): LoginResult {
   return { ok: false, error: "invalid-credentials" };
 }
 
-export const POST_SIGNIN_URL = "/post-login";
+export const POST_SIGNIN_URL = "/";
 export const authJsHandlers = handlers;
 export const login = {
   /**
@@ -72,13 +74,20 @@ function mapSession(session: Session | null): { user: AuthUser } | null {
   // Absent session (anonymous or already-rejected token) stays quiet.
   if (!session?.user) return null;
 
-  const { id, email, role } = session.user;
+  const { id, email, role, name } = session.user;
 
   // Decrypted JWT claims are re-validated at this trust boundary. Missing or
-  // unsupported roles are expected failures and stay quiet.
+  // unsupported roles are expected failures and stay quiet. Name is optional.
   if (!id || !email || !isRole(role)) return null;
 
-  return { user: { id, email, role } };
+  return {
+    user: {
+      id,
+      email,
+      role,
+      ...(typeof name === "string" && name ? { name } : {}),
+    },
+  };
 }
 
 /**

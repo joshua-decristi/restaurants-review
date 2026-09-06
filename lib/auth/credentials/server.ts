@@ -33,6 +33,7 @@ async function authorizeWithCredentials(rawInput: unknown): Promise<AuthUser | n
   return {
     id: String(user.id),
     email: user.email,
+    name: user.name,
     role: user.role,
   };
 }

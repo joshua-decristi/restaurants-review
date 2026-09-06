@@ -28,7 +28,7 @@ function sessionRequest(token?: string): Request {
 }
 
 /** Encodes a real Auth.js session JWT for the given claims. */
-async function sessionToken(claims: { sub: string; email: string; role?: string }, maxAge = 60 * 30): Promise<string> {
+async function sessionToken(claims: { sub: string; email: string; name?: string; role?: string }, maxAge = 60 * 30): Promise<string> {
   return encode({ token: claims, secret: AUTH_SECRET, salt: SESSION_COOKIE, maxAge });
 }
 
@@ -56,16 +56,18 @@ afterAll(async () => {
   await closeDatabase();
 });
 
-const reviewerClaims = { sub: "42", email: "reviewer@example.com", role: "reviewer" } as const;
+const reviewerClaims = { sub: "42", email: "reviewer@example.com", name: "Ada Reviewer", role: "reviewer" } as const;
 const ownerClaims = { sub: "7", email: "owner@example.com", role: "owner" } as const;
 
 it("returns the typed session for a correctly signed, unexpired reviewer JWT", async () => {
   const session = await getSession(sessionRequest(await sessionToken(reviewerClaims)));
 
-  expect(session).toEqual({ user: { id: "42", email: "reviewer@example.com", role: "reviewer" } });
+  expect(session).toEqual({
+    user: { id: "42", email: "reviewer@example.com", name: "Ada Reviewer", role: "reviewer" },
+  });
 });
 
-it("returns the typed session for a correctly signed, unexpired owner JWT", async () => {
+it("returns the typed session for a correctly signed, unexpired owner JWT without a name claim", async () => {
   const session = await getSession(sessionRequest(await sessionToken(ownerClaims)));
 
   expect(session).toEqual({ user: { id: "7", email: "owner@example.com", role: "owner" } });

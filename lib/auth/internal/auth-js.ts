@@ -44,12 +44,19 @@ export function createAuthjsAdapter(providers: NextAuthConfig["providers"]) {
       // `user` as always present, but it is undefined on subsequent token
       // updates (e.g. session reads), so it is narrowed defensively.
       jwt: ({ token, user }) => {
+        // On sign-in, Auth.js seeds the token with standard claims (sub/email/name)
+        // from the authorized user; bake the verified role alongside them.
         const role = (user as User | undefined)?.role;
         return role ? { ...token, role } : token;
       },
       session: ({ session, token }) => ({
         ...session,
-        user: { id: token.sub ?? "", email: token.email ?? "", role: token.role },
+        user: {
+          id: token.sub ?? "",
+          email: token.email ?? "",
+          name: token.name ?? undefined,
+          role: token.role,
+        },
       }),
     },
   });
