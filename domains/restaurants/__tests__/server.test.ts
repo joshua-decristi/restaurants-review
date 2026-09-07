@@ -4,9 +4,6 @@
  * @jest-environment node
  */
 
-import { readFile } from "node:fs/promises";
-import { join } from "node:path";
-
 import { eq, sql } from "drizzle-orm";
 
 import {
@@ -38,13 +35,6 @@ jest.mock("@/lib/assets/server", () => ({
 const uploadAsset = jest.mocked(assets.uploadAsset);
 const deleteAsset = jest.mocked(assets.deleteAsset);
 const resolveAssetUrl = jest.mocked(assets.resolveAssetUrl);
-
-const RAW_IMAGES = join(process.cwd(), ".agent/plans/restaurants/raw-images");
-
-async function loadRaw(name: "cozy-cafe.jpg" | "rustic-tuscan.jpg"): Promise<File> {
-  const bytes = await readFile(join(RAW_IMAGES, name));
-  return new File([bytes], name, { type: "image/jpeg" });
-}
 
 const TINY_PNG = Uint8Array.of(
   0x89,
@@ -120,6 +110,9 @@ const TINY_PNG = Uint8Array.of(
 );
 
 const tinyPng = new File([TINY_PNG], "tiny.png", { type: "image/png" });
+// Minimal JPEG SOI/EOI markers — enough for MIME/size validation (assets mocked).
+const jpegA = new File([Uint8Array.of(0xff, 0xd8, 0xff, 0xd9)], "image-a.jpg", { type: "image/jpeg" });
+const jpegB = new File([Uint8Array.of(0xff, 0xd8, 0xff, 0xd9, 0x00)], "image-b.jpg", { type: "image/jpeg" });
 
 function validInput(overrides: Partial<CreateRestaurantInput> = {}): CreateRestaurantInput {
   return {
@@ -342,16 +335,13 @@ describe("partial owner update", () => {
 
   it("supports image-only replacement and cleans up missing-target uploads", async () => {
     const owner = await usersApi().fakeUser({ role: "owner" });
-    const imageA = await loadRaw("cozy-cafe.jpg");
-    const imageB = await loadRaw("rustic-tuscan.jpg");
-
     uploadAsset.mockResolvedValueOnce("old-key");
-    const created = await createRestaurant(owner.id, validInput({ title: "Photo Spot" }), imageA);
+    const created = await createRestaurant(owner.id, validInput({ title: "Photo Spot" }), jpegA);
     expect(created.ok).toBe(true);
     if (!created.ok) return;
 
     uploadAsset.mockResolvedValueOnce("new-key");
-    const replaced = await updateRestaurant(owner.id, created.data.id, {}, imageB);
+    const replaced = await updateRestaurant(owner.id, created.data.id, {}, jpegB);
     expect(replaced.ok).toBe(true);
     if (!replaced.ok) return;
     expect(replaced.data.imageUrl).toContain(encodeURIComponent("new-key"));
@@ -362,25 +352,22 @@ describe("partial owner update", () => {
 
     deleteAsset.mockClear();
     uploadAsset.mockResolvedValueOnce("fail-key");
-    const missing = await updateRestaurant(owner.id, 9_999_999, {}, imageB);
+    const missing = await updateRestaurant(owner.id, 9_999_999, {}, jpegB);
     expect(missing).toEqual({ ok: false, error: "not-found" });
     expect(deleteAsset).toHaveBeenCalledWith("fail-key");
   });
 
   it("deletes the replacement image and retains the old key when the DB update fails", async () => {
     const owner = await usersApi().fakeUser({ role: "owner" });
-    const imageA = await loadRaw("cozy-cafe.jpg");
-    const imageB = await loadRaw("rustic-tuscan.jpg");
-
     uploadAsset.mockResolvedValueOnce("kept-old-key");
-    const created = await createRestaurant(owner.id, validInput({ title: "Stable Photo" }), imageA);
+    const created = await createRestaurant(owner.id, validInput({ title: "Stable Photo" }), jpegA);
     expect(created.ok).toBe(true);
     if (!created.ok) return;
 
     uploadAsset.mockResolvedValueOnce("doomed-new-key");
     await db.execute(sql`ALTER TABLE restaurants ADD CONSTRAINT restaurants_image_key_not_doomed CHECK (image_key <> 'doomed-new-key')`);
     try {
-      await expect(updateRestaurant(owner.id, created.data.id, { title: "Still Photo" }, imageB)).rejects.toThrow();
+      await expect(updateRestaurant(owner.id, created.data.id, { title: "Still Photo" }, jpegB)).rejects.toThrow();
       expect(deleteAsset).toHaveBeenCalledWith("doomed-new-key");
 
       const row = (await db.select().from(restaurants).where(eq(restaurants.id, created.data.id))).at(0);

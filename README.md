@@ -1,5 +1,32 @@
 # Restaurants Review (Toptal Takehome Project)
 
+## TLDR: Demo (evaluators)
+
+Prerequisites: **Docker** (with Compose) and **Make** only.
+
+```bash
+make demo
+APP_PORT=3001 make demo # if a process is already running on port 3000
+```
+
+**What `make demo` does:
+
+1. builds the app image
+2. starts DB server (PostgreSQL)
+3. migrates DB
+4. lint & full test suite
+5. reseeds demo data
+6. start's demo app server
+
+Lifecycle:
+
+Press `Ctrl-C` to stop the project;
+
+```bash
+make stop   # stop/remove containers and network; keep DB + asset volumes
+make clean  # also remove named volumes and locally built images
+```
+
 ### What the app should be able to do:
 
 - Allow users to register with email/password as either a reviewer or owner
@@ -141,15 +168,17 @@ This contains only the basic, high-level product routes, NOT every endpoint.
 
 ## Local Development Setup
 
-Prerequisites: Node 26 (`.nvmrc`), pnpm (pinned via `packageManager`), and any
+Optional contributor path when you already have Node/pnpm. Prerequisites:
+Node 26 (`.nvmrc`), pnpm (pinned via `packageManager`), and any
 Docker-compatible runtime (Docker Desktop, Docker Engine, or OrbStack).
 
 ```bash
 cp .env.example .env   # then set AUTH_SECRET (see below)
 pnpm install
-pnpm db:up             # start PostgreSQL (health-checked, named volume)
+pnpm db:up             # start PostgreSQL with loopback-only published port
 pnpm db:migrate        # apply committed Drizzle migrations
 pnpm db:seed           # destructive reset-first demo seed (see below)
+pnpm dev
 ```
 
 The app and `pnpm test` both require a complete local environment: `DATABASE_DRIVER=postgres`,
@@ -181,10 +210,11 @@ Everyday commands:
 - `pnpm lint` / `pnpm lint:fix` — ESLint (zero warnings enforced) with Prettier
 - `pnpm type-check` — TypeScript project check
 - `pnpm test` — all unit and integration tests serially (`--runInBand`); requires local Postgres
-- `pnpm db:seed` — destructive reset-first demo seed (users + 3 restaurants/images)
+- `pnpm db:seed` — destructive reset-first demo seed (users + restaurants/images)
 - `pnpm db:reset` — truncate all application tables (`RESTART IDENTITY CASCADE`)
 - `pnpm db:studio` — Drizzle Studio (optional)
 - `pnpm db:down` — stop the PostgreSQL container (data persists in the `takehome-db-data` volume)
+- `make demo` / `make stop` / `make clean` — Docker-only demo lifecycle (see above)
 
 ```bash
 pnpm db:generate --name add-restaurant-hours # generate a named migration

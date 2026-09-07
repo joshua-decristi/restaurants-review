@@ -15,9 +15,9 @@ if (typeof globalThis.TextDecoder === "undefined") {
  * application modules before the safety checks pass.
  *
  * Isolation policy (intentional): tests share `DATABASE_URL` with local dev.
- * There is no `TEST_DATABASE_URL`. Safety is hostname localhost/127.0.0.1 +
- * serial `--runInBand` + per-file `resetDatabase`. That truncates the same DB
- * used by `pnpm db:seed`.
+ * There is no `TEST_DATABASE_URL`. Safety is an allowlisted hostname
+ * (localhost / 127.0.0.1 / Compose service `db`) + serial `--runInBand` +
+ * per-file `resetDatabase`. That truncates the same DB used by `pnpm db:seed`.
  */
 beforeAll(() => {
   const required = ["DATABASE_DRIVER", "DATABASE_URL", "AUTH_SECRET"] as const;
@@ -44,8 +44,9 @@ beforeAll(() => {
     throw new Error(`DATABASE_URL is not a valid URL: ${JSON.stringify(databaseUrl)}`);
   }
 
-  if (hostname !== "localhost" && hostname !== "127.0.0.1") {
-    throw new Error(`DATABASE_URL hostname must be localhost or 127.0.0.1 for tests (got ${JSON.stringify(hostname)}).`);
+  const allowedDatabaseHosts = new Set(["localhost", "127.0.0.1", "db"]);
+  if (!allowedDatabaseHosts.has(hostname)) {
+    throw new Error(`DATABASE_URL hostname must be localhost, 127.0.0.1, or db for tests (got ${JSON.stringify(hostname)}).`);
   }
 
   // TEST_DATABASE_URL is intentionally unused (project forbids a second DB URL).

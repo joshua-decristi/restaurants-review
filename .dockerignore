@@ -1,0 +1,11 @@
+.git
+.agent
+.next
+node_modules
+.local-assets
+.env
+.env.*
+!.env.example
+coverage
+npm-debug.log*
+pnpm-debug.log*

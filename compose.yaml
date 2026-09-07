@@ -1,31 +1,43 @@
-# Local development PostgreSQL. Works with any Docker-compatible runtime
-# (Docker Desktop, Docker Engine, OrbStack) through the standard
-# `docker compose` interface. Credentials are configurable via a `.env` file,
-# which `docker compose` loads automatically for variable interpolation.
+# Demo and shared local PostgreSQL topology. Demo credentials are fixed to the
+# `.env.example` values. Host development publishes the DB port via compose.dev.yaml.
 services:
   db:
     image: postgres:18
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-takehome}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-takehome}
-      POSTGRES_DB: ${POSTGRES_DB:-takehome}
-    ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      POSTGRES_USER: takehome
+      POSTGRES_PASSWORD: takehome
+      POSTGRES_DB: takehome
     volumes:
       # postgres 18+ stores data in a version-specific subdirectory, so the
       # named volume mounts at /var/lib/postgresql (not .../data).
       - db-data:/var/lib/postgresql
     healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "pg_isready -U ${POSTGRES_USER:-takehome} -d ${POSTGRES_DB:-takehome}",
-        ]
+      test: ["CMD-SHELL", "pg_isready -U takehome -d takehome"]
       interval: 5s
       timeout: 5s
       retries: 10
 
+  app:
+    build: .
+    init: true
+    env_file:
+      - .env.example
+    environment:
+      DATABASE_DRIVER: postgres
+      DATABASE_URL: postgresql://takehome:takehome@db:5432/takehome
+      ASSET_PROVIDER: disk
+      ASSET_DISK_DIR: /app/.local-assets/data
+    ports:
+      - "127.0.0.1:${APP_PORT:-3000}:3000"
+    volumes:
+      - app-assets:/app/.local-assets
+    depends_on:
+      db:
+        condition: service_healthy
+
 volumes:
   db-data:
     name: takehome-db-data
+  app-assets:
+    name: takehome-app-assets
